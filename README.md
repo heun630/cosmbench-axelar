@@ -1,5 +1,17 @@
 # Cosmbench-Axelar
 
+## Initial Setup
+
+Before proceeding with any node setup, ensure you clone the Axelar repository and build the project:
+
+```bash
+git clone https://github.com/axelarnetwork/axelar-core.git
+cd axelar-core
+make build
+```
+
+---
+
 ## Multi-Node Setup Workflow
 
 If you want to run multiple Axelar nodes, follow these steps in order:
