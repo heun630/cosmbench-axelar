@@ -1,5 +1,36 @@
 # Cosmbench-Axelar
-
+## Example of Directory Structure
+```
+data
+└── axelar
+    ├── node1
+    │   ├── config
+    │   │   └── gentx
+    │   ├── data
+    │   │   ├── application.db
+    │   │   ├── blockstore.db
+    │   │   ├── cs.wal
+    │   │   ├── evidence.db
+    │   │   ├── snapshots
+    │   │   │   └── metadata.db
+    │   │   ├── state.db
+    │   │   └── tx_index.db
+    │   ├── keyring-file
+    │   └── keyring-test
+    └── node2
+        ├── config
+        ├── data
+        │   ├── application.db
+        │   ├── blockstore.db
+        │   ├── cs.wal
+        │   ├── evidence.db
+        │   ├── snapshots
+        │   │   └── metadata.db
+        │   ├── state.db
+        │   └── tx_index.db
+        └── keyring-file
+```
+---
 ## Initial Setup
 
 Before proceeding with any node setup, ensure you clone the Axelar repository and build the project:
