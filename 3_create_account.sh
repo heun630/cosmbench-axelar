@@ -16,8 +16,8 @@ do
         ACCOUNT_ADDRESS=$($BINARY keys show $ACCOUNT_NAME -a --home $CURRENT_DATA_DIR --keyring-backend $KEYRING_BACKEND)
         echo "$ACCOUNT_ADDRESS"
 
-        echo "$BINARY add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID"
-        $BINARY add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID
+        echo "$BINARY add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR"
+        $BINARY add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR
     done
 done
 
