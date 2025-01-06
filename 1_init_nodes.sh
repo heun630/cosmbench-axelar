@@ -6,7 +6,7 @@ source ./env.sh
 rm -rf $NODE_ROOT_DIR
 
 echo "The number of nodes: "$NODE_COUNT
-for ((i=0;i<$NODE_COUNT;i++))
+for ((i = 0; i < $NODE_COUNT; i++))
 do
     CURRENT_DATA_DIR=$NODE_ROOT_DIR/node$i
     $BINARY init $MONIKER$i --chain-id $CHAIN_ID --home $CURRENT_DATA_DIR
