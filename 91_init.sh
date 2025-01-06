@@ -20,6 +20,9 @@ do
     INDEX=$i
     CURRENT_DATA_DIR=$TESTDIR/node$i
 
+    # doenom stake에서 uaxl로 변경
+    sed -i 's/\"stake\"/\"uaxl\"/g' "$CURRENT_DATA_DIR/config/genesis.json"
+
     # Proxy App PORT 변경
     sed -i "s#proxy_app = \"tcp:\/\/127.0.0.1:26658\"#proxy_app = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
 
@@ -52,7 +55,6 @@ do
     sed -i "s/address = \"0.0.0.0:9900\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
 
     sed -i "s/address = \"tcp:\/\/0.0.0.0:10337\"/address = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
-
 done
 
 # [persistent peers]
