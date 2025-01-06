@@ -24,21 +24,21 @@ do
     fi
 
     echo "4 || $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR"
-    $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR
+    $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR
    
     # echo $NUMBER
 done
     
 # Then create gentx for each validator
 for ((i = 0; i < $NODE_COUNT; i++))
-do          
+do
     CURRENT_DATA_DIR=$NODE_ROOT_DIR/node$i
     ACCOUNT_NAME=$ACCOUNT_NAME_PREFIX$i
 
-    $BINARY axelard gentx $ACCOUNT_NAME 9910004452404000000000$UNIT --chain-id $CHAIN_ID --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR
+    $BINARY gentx $ACCOUNT_NAME 9910004452404000000000$UNIT --chain-id $CHAIN_ID --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR
 
     cp -f "$CURRENT_DATA_DIR/config/gentx/"* "$GENESIS_DIR/config/gentx/"
-    $BINARY axelard collect-gentxs --home $GENESIS_DIR
+    $BINARY collect-gentxs --home $GENESIS_DIR
 
     rm -rf $CURRENT_DATA_DIR/keyring-test
 done
