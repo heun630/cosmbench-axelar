@@ -17,7 +17,7 @@ do
         echo "$ACCOUNT_ADDRESS"
 
         echo "$BINARY genesis add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID"
-        $BINARY genesis add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID
+        $BINARY add-genesis-account $ACCOUNT_ADDRESS 10000000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID
     done
 done
 
