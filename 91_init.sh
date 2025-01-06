@@ -53,9 +53,8 @@ do
     
     #sed -i 's/address = \"0.0.0.0:9090\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g' $CURRENT_DATA_DIR/config/app.toml
     echo "sed -i 's/address = \"0.0.0.0:9090\"/address = "'${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}'"/g' $CURRENT_DATA_DIR/config/app.toml"
-    sed -i "s#address = \"0.0.0.0:9900\"#address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/app.toml
+    sed -i "s/address = \"0.0.0.0:9090\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
 
-    echo "sed -i "s/address = \"tcp:\/\/0.0.0.0:1317\"/address = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml"
     sed -i "s/address = \"tcp:\/\/0.0.0.0:1317\"/address = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
 done
 
