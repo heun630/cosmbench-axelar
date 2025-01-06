@@ -61,12 +61,25 @@ done
 echo "Update persistent_peers"
 PERSISTENT_PEERS=""
 
-for ((i = 0; i < $NODE_COUNT; i++))
-do
+#for ((i = 0; i < $NODE_COUNT; i++))
+#do
+#    PEER_ID=$(axelard tendermint show-node-id --home "${TESTDIR}/node${j}")
+#    echo "axelard tendermint show-node-id --home "${TESTDIR}/node${j}"
+#    PERSISTENT_PEERS=$PERSISTENT_PEERS${PEER_ID}'@'${PRIVATE_HOSTS[$i]}':'${P2P_PORTS[$i]}','
+#done
+#PERSISTENT_PEERS=${PERSISTENT_PEERS%,} #마지막에 ,를 제거하겠다는 의미
+
+for ((j = 0; j < $NODE_COUNT; j++)); do
+    # 각 노드의 PEER_ID를 동적으로 가져옴
     PEER_ID=$(axelard tendermint show-node-id --home "${TESTDIR}/node${j}")
-    PERSISTENT_PEERS=$PERSISTENT_PEERS${PEER_ID}'@'${PRIVATE_HOSTS[$i]}':'${P2P_PORTS[$i]}','
+
+    # PEER_ID 확인 후 추가
+    if [ -n "$PEER_ID" ]; then
+        PERSISTENT_PEERS+="${PEER_ID}@${PRIVATE_HOSTS[$j]}:${P2P_PORTS[$j]},"
+    else
+        echo "Failed to retrieve PEER_ID for node${j}. Skipping..."
+    fi
 done
-PERSISTENT_PEERS=${PERSISTENT_PEERS%,} #마지막에 ,를 제거하겠다는 의미
 
 echo "PERSISTENT_PEERS : "$PERSISTENT_PEERS
 for ((i = 0; i < $NODE_COUNT; i++))
