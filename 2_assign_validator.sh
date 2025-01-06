@@ -16,13 +16,13 @@ do
 
     echo "$BINARY add-genesis-account $ACCOUNT_ADDRESS $UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID"
 
-    $BINARY genesis add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID
+    $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID
 
     if [ $CURRENT_DATA_DIR = $GENESIS_DIR  ]; then
         continue
     fi
     
-    $BINARY genesis add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID
+    $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID
    
     # echo $NUMBER
 done
@@ -33,10 +33,10 @@ do
     CURRENT_DATA_DIR=$NODE_ROOT_DIR/node$i
     ACCOUNT_NAME=$ACCOUNT_NAME_PREFIX$i
 
-    $BINARY genesis gentx $ACCOUNT_NAME 9910004452404000000000$UNIT --chain-id $CHAIN_ID --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR
+    $BINARY axelard gentx $ACCOUNT_NAME 9910004452404000000000$UNIT --chain-id $CHAIN_ID --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR
 
     cp -f "$CURRENT_DATA_DIR/config/gentx/"* "$GENESIS_DIR/config/gentx/"
-    $BINARY genesis collect-gentxs --home $GENESIS_DIR
+    $BINARY axelard collect-gentxs --home $GENESIS_DIR
 
     rm -rf $CURRENT_DATA_DIR/keyring-test
 done
