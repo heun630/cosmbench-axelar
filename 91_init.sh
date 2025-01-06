@@ -24,6 +24,7 @@ do
     sed -i 's/\"stake\"/\"uaxl\"/g' "$CURRENT_DATA_DIR/config/genesis.json"
 
     # Proxy App PORT 변경
+    echo "sed -i "s#proxy_app = \"tcp:\/\/127.0.0.1:26658\"#proxy_app = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml"
     sed -i "s#proxy_app = \"tcp:\/\/127.0.0.1:26658\"#proxy_app = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
 
     # RPC PORT 변경
