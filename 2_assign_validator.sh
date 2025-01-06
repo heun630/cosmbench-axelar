@@ -9,13 +9,13 @@ do
 
     cp -f $CURRENT_DATA_DIR/config/sample_genesis.json $CURRENT_DATA_DIR/config/genesis.json
 
-    echo "$BINARY keys add $ACCOUNT_NAME --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR"
+#    echo "$BINARY keys add $ACCOUNT_NAME --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR"
     $BINARY keys add $ACCOUNT_NAME --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR
 
     ACCOUNT_ADDRESS=$($BINARY keys show $ACCOUNT_NAME -a --home $CURRENT_DATA_DIR --keyring-backend $KEYRING_BACKEND)
+    echo "1. || $ACCOUNT_ADDRESS"
 
-    echo "$BINARY add-genesis-account $ACCOUNT_ADDRESS $UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID"
-
+    echo "2. || $BINARY add-genesis-account $ACCOUNT_ADDRESS $UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID"
     $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID
 
     if [ $CURRENT_DATA_DIR = $GENESIS_DIR  ]; then
