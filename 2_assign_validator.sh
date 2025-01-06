@@ -18,11 +18,14 @@ do
     echo "2. || $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR"
     $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR
 
+    echo "3 || "
     if [ $CURRENT_DATA_DIR = $GENESIS_DIR ]; then
+        echo "4 || CURRENT_DATA_DIR: $CURRENT_DATA_DIR || GENESIS_DIR: $GENESIS_DIR"
         continue
     fi
-    
-    $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR --chain-id $CHAIN_ID
+
+    echo "5 || $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR"
+    $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR
    
     # echo $NUMBER
 done
