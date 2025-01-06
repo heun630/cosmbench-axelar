@@ -63,7 +63,8 @@ PERSISTENT_PEERS=""
 
 for ((i = 0; i < $NODE_COUNT; i++))
 do
-    PERSISTENT_PEERS=$PERSISTENT_PEERS${NODE_IDS[$i]}'@'${PRIVATE_HOSTS[$i]}':'${P2P_PORTS[$i]}','
+    PEER_ID=$(axelard tendermint show-node-id --home "${TESTDIR}/node${j}")
+    PERSISTENT_PEERS=$PERSISTENT_PEERS${PEER_ID}'@'${PRIVATE_HOSTS[$i]}':'${P2P_PORTS[$i]}','
 done
 PERSISTENT_PEERS=${PERSISTENT_PEERS%,} #마지막에 ,를 제거하겠다는 의미
 
