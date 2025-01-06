@@ -16,7 +16,7 @@ do
     echo "1. || $ACCOUNT_ADDRESS"
 
     echo "2. || $BINARY add-genesis-account $ACCOUNT_ADDRESS $UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID"
-    $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR --chain-id $CHAIN_ID
+    $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR
 
     if [ $CURRENT_DATA_DIR = $GENESIS_DIR  ]; then
         continue
