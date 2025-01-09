@@ -78,7 +78,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	host := HOSTS[txIdx%len(HOSTS)]
 	port := REST_PORTS[txIdx%len(REST_PORTS)]
-	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs", host, port)
+	url := fmt.Sprintf("http:/%s:%s/cosmos/tx/v1beta1/txs", host, port)
 
 	requestData := TxData{
 		TxBytes: tx,
