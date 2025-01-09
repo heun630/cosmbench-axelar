@@ -42,7 +42,7 @@ for ((i = 0; i < $NODE_COUNT; i++)); do
     sed -i 's/size = 200/size = 60000/g' "$CURRENT_DATA_DIR/config/config.toml"
 
     # Minimum Gas Prices 변경
-    # sed -i 's/minimum-gas-prices = "0.007uaxl"/minimum-gas-prices = "0uaxl"/g' "$CURRENT_DATA_DIR/config/app.toml"
+    sed -i 's/minimum-gas-prices = "0.007uaxl"/minimum-gas-prices = "0uaxl"/g' "$CURRENT_DATA_DIR/config/app.toml"
 
     # gRPC PORT 변경
     sed -i "s/address = \"0.0.0.0:9090\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g" "$CURRENT_DATA_DIR/config/app.toml"
