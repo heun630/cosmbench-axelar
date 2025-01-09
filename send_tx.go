@@ -19,7 +19,7 @@ import (
 2. HOSTS - 노드 IP (노드는 4대 기준)
 3. REST_PORTS - 노드의 REST API 포트 (노드는 4대 기준)
 */
-var encodedTxDir = "axelar-cosmbench_encoded_txs"
+var encodedTxDir = "/data/axelar/cosmbench-axelar/axelar-cosmbench_encoded_txs"
 
 // 노드 설정
 var HOSTS = []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"}
@@ -45,8 +45,6 @@ func readEncodedTxs(dir string) ([]string, error) {
 	}
 
 	var txs []string
-
-	fmt.Printf("1111:: TxBytes: %s\n", txs[0])
 
 	// 각 파일의 내용을 읽어서 트랜잭션 배열에 추가합니다
 	for _, file := range files {
