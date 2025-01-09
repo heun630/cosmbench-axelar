@@ -42,7 +42,7 @@ for ((i = 0; i < $NODE_COUNT; i++)); do
     sed -i 's/size = 200/size = 60000/g' "$CURRENT_DATA_DIR/config/config.toml"
 
     # Minimum Gas Prices 변경
-    sed -i 's/minimum-gas-prices = "160000000inj"/minimum-gas-prices = "0stake"/g' "$CURRENT_DATA_DIR/config/app.toml"
+    sed -i 's/minimum-gas-prices = \"160000000inj\"/minimum-gas-prices = \"0stake\"/g' "$CURRENT_DATA_DIR/config/app.toml"
 
     # gRPC PORT 변경
     sed -i "s/address = \"0.0.0.0:9090\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g" "$CURRENT_DATA_DIR/config/app.toml"
@@ -52,6 +52,9 @@ for ((i = 0; i < $NODE_COUNT; i++)); do
 
     # TCP PORT 변경
     sed -i "s#address = \"tcp://0.0.0.0:1317\"#address = \"tcp://${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"#g" "$CURRENT_DATA_DIR/config/app.toml"
+
+    # REST API 활성화
+    sed -i 's/enable = false/enable = true/g' "$CURRENT_DATA_DIR/config/app.toml"
 done
 
 # [persistent_peers] 설정
