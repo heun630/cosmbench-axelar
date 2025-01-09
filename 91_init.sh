@@ -17,51 +17,46 @@ done
 
 for ((i = 0; i < $NODE_COUNT; i++))
 do
+    # 환경 변수 설정
     INDEX=$i
     CURRENT_DATA_DIR=$TESTDIR/node$i
 
-    # doenom stake에서 uaxl로 변경
+    # "stake"를 "uaxl"로 변경
     sed -i 's/\"stake\"/\"uaxl\"/g' "$CURRENT_DATA_DIR/config/genesis.json"
 
     # Proxy App PORT 변경
-    echo "sed -i "s#proxy_app = \"tcp:\/\/127.0.0.1:26658\"#proxy_app = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml"
-    sed -i "s#proxy_app = \"tcp:\/\/127.0.0.1:26658\"#proxy_app = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
+    echo "sed -i \"s#proxy_app = \"tcp:\\/\\/127.0.0.1:26658\"#proxy_app = \"tcp:\\/\\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g\" $CURRENT_DATA_DIR/config/config.toml"
+    sed -i "s#proxy_app = \"tcp:\\/\\/127.0.0.1:26658\"#proxy_app = \"tcp:\\/\\/${PRIVATE_HOSTS[$INDEX]}:${PROXYAPP_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
 
     # RPC PORT 변경
-    echo "sed -i "s#laddr = \"tcp:\/\/127.0.0.1:26657\"#laddr = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${RPC_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml"
-    sed -i "s#laddr = \"tcp:\/\/127.0.0.1:26657\"#laddr = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${RPC_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
+    echo "sed -i \"s#laddr = \"tcp:\\/\\/127.0.0.1:26657\"#laddr = \"tcp:\\/\\/${PRIVATE_HOSTS[$INDEX]}:${RPC_PORTS[$INDEX]}\"#g\" $CURRENT_DATA_DIR/config/config.toml"
+    sed -i "s#laddr = \"tcp:\\/\\/127.0.0.1:26657\"#laddr = \"tcp:\\/\\/${PRIVATE_HOSTS[$INDEX]}:${RPC_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
 
     # P2P PORT 변경
-    sed -i "s#laddr = \"tcp:\/\/0.0.0.0:26656\"#laddr = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${P2P_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml 
+    sed -i "s#laddr = \"tcp:\\/\\/0.0.0.0:26656\"#laddr = \"tcp:\\/\\/${PRIVATE_HOSTS[$INDEX]}:${P2P_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
 
-    # [pprof port]
+    # [pprof port] 변경
     sed -i "s#pprof_laddr = \"localhost:6060\"#pprof_laddr = \"${PRIVATE_HOSTS[$INDEX]}:${PPROF_PORTS[$INDEX]}\"#g" $CURRENT_DATA_DIR/config/config.toml
 
     # 중복 IP 허용
     sed -i 's/allow_duplicate_ip = false/allow_duplicate_ip = true/g' $CURRENT_DATA_DIR/config/config.toml
 
-    # Mempool Size
+    # Mempool Size 설정
     sed -i 's/size = 200/size = 60000/g' $CURRENT_DATA_DIR/config/config.toml
 
-    # Minimum Gas Prices
+    # Minimum Gas Prices 변경
     sed -i 's/minimum-gas-prices = \"160000000inj\"/minimum-gas-prices = \"0stake\"/g' $CURRENT_DATA_DIR/config/app.toml
 
-    # max_bytes
-    # sed -i "s/\"max_bytes\": \"22020096\"/\"max_bytes\": \"88080384\"/g" $CURRENT_DATA_DIR/config/genesis.json
-
     # [app.toml port]
-    
-    #sed -i 's/address = \"0.0.0.0:9090\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g' $CURRENT_DATA_DIR/config/app.toml
-    echo "sed -i 's/address = \"0.0.0.0:9090\"/address = "'${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}'"/g' $CURRENT_DATA_DIR/config/app.toml"
 
-    # gRPC port
+    # gRPC port 변경
     sed -i "s/address = \"0.0.0.0:9090\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
 
-    # gRPC Web
+    # gRPC Web port 변경
     sed -i "s/address = \"0.0.0.0:9091\"/address = \"${PRIVATE_HOSTS[$INDEX]}:${GRPC_WEB_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
 
-    # tcp
-    sed -i "s/address = \"tcp:\/\/0.0.0.0:1317\"/address = \"tcp:\/\/${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
+    # TCP 변경
+    sed -i "s/address = \"tcp:\\/\\/0.0.0.0:1317\"/address = \"tcp:\\/\\/${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"/g" $CURRENT_DATA_DIR/config/app.toml
 done
 
 # [persistent peers]
