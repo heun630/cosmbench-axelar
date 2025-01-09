@@ -76,9 +76,9 @@ func readEncodedTxs(dir string) ([]string, error) {
 // sendTransaction은 단일 트랜잭션을 지정된 노드로 전송합니다
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	host := HOSTS[txIdx%len(HOSTS)]
-	port := REST_PORTS[txIdx%len(REST_PORTS)]
-	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs", host, port)
+
+	// Axelar REST API 고정 URL
+	url := "https://axelar-rpc.publicnode.com:443/cosmos/tx/v1beta1/txs"
 
 	requestData := TxData{
 		TxBytes: tx,
@@ -87,13 +87,13 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup) {
 
 	jsonData, err := json.Marshal(requestData)
 	if err != nil {
-		fmt.Printf("[TxSequence %d, Host %s] JSON 변환 실패: %v\n", txIdx, host, err)
+		fmt.Printf("[TxSequence %d] JSON 변환 실패: %v\n", txIdx, err)
 		return
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Printf("[TxSequence %d, Host %s] 요청 생성 실패: %v\n", txIdx, host, err)
+		fmt.Printf("[TxSequence %d] 요청 생성 실패: %v\n", txIdx, err)
 		return
 	}
 
@@ -101,18 +101,18 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("[TxSequence %d, Host %s] 요청 전송 실패: %v\n", txIdx, host, err)
+		fmt.Printf("[TxSequence %d] 요청 전송 실패: %v\n", txIdx, err)
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		fmt.Printf("[TxSequence %d, Host %s] 응답 읽기 실패: %v\n", txIdx, host, err)
+		fmt.Printf("[TxSequence %d] 응답 읽기 실패: %v\n", txIdx, err)
 		return
 	}
 
-	fmt.Printf("[TxSequence %d, Host %s, Port %s] 응답: %s\n", txIdx, host, port, string(body))
+	fmt.Printf("[TxSequence %d] 응답: %s\n", txIdx, string(body))
 }
 
 func main() {
