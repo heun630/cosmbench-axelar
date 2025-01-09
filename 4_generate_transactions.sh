@@ -1,5 +1,3 @@
-### multiple senders case
-
 #!/bin/bash
 
 source ./env.sh
@@ -23,16 +21,17 @@ do
         # ACCOUNT_NUMBER=$(($NUMBER+29+28))
         ACCOUNT_NUMBER=$(($NUMBER+4)) #account number는 0부터 시작, 미리 validator 4대를 만들었기 때문에 +4 해줌
         ACCOUNT_NAME=$ACCOUNT_NAME_PREFIX$NUMBER # example) account_0
-        echo "$BINARY keys show $ACCOUNT_NAME -a --home $CURRENT_DATA_DIR --keyring-backend test"
+
+        # echo "$BINARY keys show $ACCOUNT_NAME -a --home $CURRENT_DATA_DIR --keyring-backend test"
         ACCOUNT_ADDRESS=$($BINARY keys show $ACCOUNT_NAME -a --home $CURRENT_DATA_DIR --keyring-backend test)
-        echo $ACCOUNT_ADDRESS
-        # echo "
-        # $BINARY tx bank send $ACCOUNT_ADDRESS $ACCOUNT_ADDRESS $SEND_AMOUNT$UNIT --chain-id $CHAIN_ID --home $CURRENT_DATA_DIR --keyring-backend test --generate-only > $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER"
+
+        # echo $ACCOUNT_ADDRESS
+        echo "$BINARY tx bank send $ACCOUNT_ADDRESS $ACCOUNT_ADDRESS $SEND_AMOUNT$UNIT --chain-id $CHAIN_ID --home $CURRENT_DATA_DIR --keyring-backend test --generate-only > $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER"
 
         $BINARY tx bank send $ACCOUNT_ADDRESS $ACCOUNT_ADDRESS $SEND_AMOUNT$UNIT--home $CURRENT_DATA_DIR --keyring-backend test --generate-only > $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER
 
-        echo "$BINARY tx sign $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER --chain-id $CHAIN_ID --from $ACCOUNT_NAME --home $CURRENT_DATA_DIR --offline --sequence 0 --account-number $ACCOUNT_NUMBER --keyring-backend test > $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER"
 
+        echo "$BINARY tx sign $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER --chain-id $CHAIN_ID --from $ACCOUNT_NAME --home $CURRENT_DATA_DIR --offline --sequence 0 --account-number $ACCOUNT_NUMBER --keyring-backend test > $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER"
         $BINARY tx sign $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER --chain-id $CHAIN_ID --from $ACCOUNT_NAME --home $CURRENT_DATA_DIR --offline --sequence 0 --account-number $ACCOUNT_NUMBER --keyring-backend test > $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER
 
         
