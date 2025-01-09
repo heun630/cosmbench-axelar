@@ -29,7 +29,7 @@ do
         # echo "$BINARY tx bank send $ACCOUNT_ADDRESS $ACCOUNT_ADDRESS $SEND_AMOUNT$UNIT --home $CURRENT_DATA_DIR --keyring-backend test --generate-only > $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER"
         $BINARY tx bank send $ACCOUNT_ADDRESS $ACCOUNT_ADDRESS $SEND_AMOUNT$UNIT --home $CURRENT_DATA_DIR --keyring-backend test --generate-only > $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER
 
-        echo "$BINARY tx sign $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER --chain-id $CHAIN_ID --from $ACCOUNT_NAME --home $CURRENT_DATA_DIR --offline --sequence 0 --account-number $ACCOUNT_NUMBER --keyring-backend test > $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER"
+        # echo "$BINARY tx sign $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER --chain-id $CHAIN_ID --from $ACCOUNT_NAME --home $CURRENT_DATA_DIR --offline --sequence 0 --account-number $ACCOUNT_NUMBER --keyring-backend test > $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER"
         $BINARY tx sign $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER --chain-id $CHAIN_ID --from $ACCOUNT_NAME --home $CURRENT_DATA_DIR --offline --sequence 0 --account-number $ACCOUNT_NUMBER --keyring-backend test > $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER 2>&1
 
         ENCODED=`$BINARY tx encode $SIGNED_TX_ROOT_DIR/$SIGNED_TX_PREFIX$NUMBER`
