@@ -45,6 +45,9 @@ func readEncodedTxs(dir string) ([]string, error) {
 	}
 
 	var txs []string
+
+	fmt.Printf("1111:: TxBytes: %s\n", txs[0])
+
 	// 각 파일의 내용을 읽어서 트랜잭션 배열에 추가합니다
 	for _, file := range files {
 		content, err := ioutil.ReadFile(file)
