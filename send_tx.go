@@ -23,7 +23,7 @@ var encodedTxDir = "axelar-cosmbench_encoded_txs"
 
 // 노드 설정
 var HOSTS = []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"}
-var REST_PORTS = []string{"22000", "22001", "22002", "22003"}
+var REST_PORTS = []string{"22200", "22201", "22202", "22203"}
 
 var numTxs int   // 총 트랜잭션 수
 var InputTPS int // 입력 TPS (초당 입력 트랜잭션 수)
