@@ -54,7 +54,7 @@ for ((i = 0; i < $NODE_COUNT; i++)); do
     sed -i "s#address = \"tcp://0.0.0.0:1317\"#address = \"tcp://${PRIVATE_HOSTS[$INDEX]}:${API_PORTS[$INDEX]}\"#g" "$CURRENT_DATA_DIR/config/app.toml"
 
     # [api] 섹션 REST API 활성화
-    sed -i '/\[api\]/,/^$/ s/enable = false/enable = true/' "$CURRENT_DATA_DIR/config/app.toml"
+    sed -i '/\[api\]/,/^$/ { s/enable = false/enable = true/ }' "$CURRENT_DATA_DIR/config/app.toml"
 done
 
 # [persistent_peers] 설정
