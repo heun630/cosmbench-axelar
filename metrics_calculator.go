@@ -137,24 +137,10 @@ func main() {
 		return
 	}
 
-	// Height별 중복 개수 확인
-	heightCount := make(map[int]int)
-	for _, block := range blockLogs {
-		heightCount[block.Height]++
-	}
-
-	// 동적으로 노드 수 계산
-	nodeCount := 0
-	for _, count := range heightCount {
-		if count > nodeCount {
-			nodeCount = count
-		}
-	}
-
 	// 노드별 블록 로그 분리
 	nodeBlockLogs := make(map[int][]BlockLog) // 노드별 블록 로그 저장
 	for _, block := range blockLogs {
-		nodeID := (block.Height - 1) % nodeCount // 노드 ID 계산
+		nodeID := block.Height % 4 // 4개의 노드로 가정 (노드 ID는 0~3)
 		nodeBlockLogs[nodeID] = append(nodeBlockLogs[nodeID], block)
 	}
 
