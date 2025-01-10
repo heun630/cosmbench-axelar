@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -154,12 +155,16 @@ func main() {
 		tps = float64(totalTransactions/4) / latencySeconds
 	}
 
-	// 노드별 블록 로그 분리
-	nodeBlockLogs := make(map[int][]BlockLog) // 노드별 블록 로그 저장
+	// 노드별 블록 로그 분리 및 중복 제거
+	nodeBlockLogs := make(map[int]map[int]BlockLog) // 노드별로 Height 기준으로 블록 로그 저장
 	for _, block := range blockLogs {
 		if block.NumTxs > 0 {
 			nodeID := block.Height % 4 // 4개의 노드로 가정 (노드 ID는 0~3)
-			nodeBlockLogs[nodeID] = append(nodeBlockLogs[nodeID], block)
+			if nodeBlockLogs[nodeID] == nil {
+				nodeBlockLogs[nodeID] = make(map[int]BlockLog)
+			}
+			// 중복된 Height의 블록은 덮어씀
+			nodeBlockLogs[nodeID][block.Height] = block
 		}
 	}
 
@@ -167,7 +172,15 @@ func main() {
 	fmt.Println("Block Logs by Node:")
 	for nodeID, blocks := range nodeBlockLogs {
 		fmt.Printf("Node %d:\n", nodeID)
-		for _, block := range blocks {
+		// Height 기준으로 정렬
+		var sortedHeights []int
+		for height := range blocks {
+			sortedHeights = append(sortedHeights, height)
+		}
+		sort.Ints(sortedHeights) // 정렬
+
+		for _, height := range sortedHeights {
+			block := blocks[height]
 			fmt.Printf("  Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
 		}
 	}
