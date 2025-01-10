@@ -155,7 +155,9 @@ func main() {
 	// Block Logs 출력
 	fmt.Printf("Block Logs:\n")
 	for _, block := range blockLogs {
-		fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
+		if block.NumTxs > 0 {
+			fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
+		}
 	}
 
 	// Min/Max Timestamp 출력
@@ -167,7 +169,7 @@ func main() {
 	fmt.Printf("Throughput (TPS): %.2f\n", tps)
 
 	// 블록 요약 출력
-	blockSummary := summarizeBlocks(blockLogs)
-	fmt.Println("\nBlock Summary:")
-	fmt.Println(blockSummary)
+	//blockSummary := summarizeBlocks(blockLogs)
+	//fmt.Println("\nBlock Summary:")
+	//fmt.Println(blockSummary)
 }
