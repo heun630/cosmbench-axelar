@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,31 +52,39 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 	return txLogs, nil
 }
 
-// 블록 로그 파싱
-func parseBlockLogs(filePath string) ([]BlockLog, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("블록 로그 파일 열기 실패: %v", err)
+// 블록 로그 병합 및 파싱
+func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
+	// output*.log 파일 검색
+	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("블록 로그 파일 검색 실패: %v", err)
 	}
-	defer file.Close()
 
 	var blockLogs []BlockLog
-	scanner := bufio.NewScanner(file)
 	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)`)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		match := blockLogRegex.FindStringSubmatch(line)
-		if len(match) > 0 {
-			timestamp, _ := strconv.ParseInt(match[1], 10, 64)
-			height, _ := strconv.Atoi(match[2])
-			numTxs, _ := strconv.Atoi(match[3])
-			blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
+	for _, file := range files {
+		f, err := os.Open(file)
+		if err != nil {
+			return nil, fmt.Errorf("파일 열기 실패 (%s): %v", file, err)
 		}
-	}
+		defer f.Close()
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("블록 로그 파일 읽기 실패: %v", err)
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			match := blockLogRegex.FindStringSubmatch(line)
+			if len(match) > 0 {
+				timestamp, _ := strconv.ParseInt(match[1], 10, 64)
+				height, _ := strconv.Atoi(match[2])
+				numTxs, _ := strconv.Atoi(match[3])
+				blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("파일 읽기 실패 (%s): %v", file, err)
+		}
 	}
 
 	return blockLogs, nil
@@ -127,9 +136,9 @@ func summarizeBlocks(blockLogs []BlockLog) string {
 }
 
 func main() {
-	// 파일 경로 설정
-	txLogFile := "tx_log.txt"       // 트랜잭션 로그 파일
-	blockLogFile := "block_log.txt" // 블록 로그 파일
+	// 로그 파일 경로 설정
+	txLogFile := "tx_log.txt" // 트랜잭션 로그 파일
+	logDir := "."             // 블록 로그 파일이 위치한 디렉토리
 
 	// 트랜잭션 로그 파싱
 	txLogs, err := parseTxLogs(txLogFile)
@@ -138,10 +147,10 @@ func main() {
 		return
 	}
 
-	// 블록 로그 파싱
-	blockLogs, err := parseBlockLogs(blockLogFile)
+	// 블록 로그 병합 및 파싱
+	blockLogs, err := parseAndMergeBlockLogs(logDir)
 	if err != nil {
-		fmt.Printf("블록 로그 파싱 실패: %v\n", err)
+		fmt.Printf("블록 로그 병합 및 파싱 실패: %v\n", err)
 		return
 	}
 
