@@ -77,10 +77,12 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			line := scanner.Text()
-			// 컬러 코드 제거
+
+			// ANSI 컬러 코드 제거
 			colorCodeRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 			cleanedLine := colorCodeRegex.ReplaceAllString(line, "")
 
+			// 매칭 수행
 			match := blockLogRegex.FindStringSubmatch(cleanedLine)
 			if len(match) > 0 {
 				timestamp, _ := strconv.ParseInt(match[1], 10, 64)
