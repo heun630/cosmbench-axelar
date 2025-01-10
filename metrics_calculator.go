@@ -134,12 +134,17 @@ func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog) (float64, float64, e
 	var latencyCount int64
 
 	for _, tx := range txLogs {
+		var committedBlock BlockLog
 		for _, block := range blockLogs {
 			if tx.Timestamp <= block.Timestamp {
-				totalLatency += block.Timestamp - tx.Timestamp
-				latencyCount++
+				committedBlock = block
 				break
 			}
+		}
+
+		if committedBlock.Timestamp != 0 {
+			totalLatency += committedBlock.Timestamp - tx.Timestamp
+			latencyCount++
 		}
 	}
 
