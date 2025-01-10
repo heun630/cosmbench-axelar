@@ -1,0 +1,163 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// TxLog는 트랜잭션 로그 데이터를 저장하는 구조체
+type TxLog struct {
+	TxIdx     int
+	Timestamp int64
+}
+
+// BlockLog는 블록 로그 데이터를 저장하는 구조체
+type BlockLog struct {
+	Timestamp int64
+	Height    int
+	NumTxs    int
+}
+
+// 트랜잭션 로그 파싱
+func parseTxLogs(filePath string) ([]TxLog, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
+	}
+	defer file.Close()
+
+	var txLogs []TxLog
+	scanner := bufio.NewScanner(file)
+	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+time:\s+(\d+)`)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		match := txLogRegex.FindStringSubmatch(line)
+		if len(match) > 0 {
+			txIdx, _ := strconv.Atoi(match[1])
+			timestamp, _ := strconv.ParseInt(match[2], 10, 64)
+			txLogs = append(txLogs, TxLog{TxIdx: txIdx, Timestamp: timestamp})
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("트랜잭션 로그 파일 읽기 실패: %v", err)
+	}
+
+	return txLogs, nil
+}
+
+// 블록 로그 파싱
+func parseBlockLogs(filePath string) ([]BlockLog, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("블록 로그 파일 열기 실패: %v", err)
+	}
+	defer file.Close()
+
+	var blockLogs []BlockLog
+	scanner := bufio.NewScanner(file)
+	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)`)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		match := blockLogRegex.FindStringSubmatch(line)
+		if len(match) > 0 {
+			timestamp, _ := strconv.ParseInt(match[1], 10, 64)
+			height, _ := strconv.Atoi(match[2])
+			numTxs, _ := strconv.Atoi(match[3])
+			blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("블록 로그 파일 읽기 실패: %v", err)
+	}
+
+	return blockLogs, nil
+}
+
+// Latency 및 TPS 계산
+func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog) (float64, float64, error) {
+	if len(txLogs) == 0 || len(blockLogs) == 0 {
+		return 0, 0, fmt.Errorf("로그 데이터가 부족합니다")
+	}
+
+	// Start and end time
+	startTime := txLogs[0].Timestamp
+	endTime := blockLogs[len(blockLogs)-1].Timestamp
+	totalTimeSeconds := float64(endTime-startTime) / 1000.0
+
+	// TPS 계산
+	totalTransactions := 0
+	for _, block := range blockLogs {
+		totalTransactions += block.NumTxs
+	}
+	tps := float64(totalTransactions) / totalTimeSeconds
+
+	// Latency 계산
+	var totalLatency int64
+	var latencyCount int64
+
+	for _, tx := range txLogs {
+		for _, block := range blockLogs {
+			if tx.Timestamp <= block.Timestamp {
+				totalLatency += block.Timestamp - tx.Timestamp
+				latencyCount++
+				break
+			}
+		}
+	}
+
+	avgLatency := float64(totalLatency) / float64(latencyCount)
+	return avgLatency, tps, nil
+}
+
+// 블록별 트랜잭션 요약
+func summarizeBlocks(blockLogs []BlockLog) string {
+	var summary strings.Builder
+	for _, block := range blockLogs {
+		summary.WriteString(fmt.Sprintf("Height %d: %d transactions\n", block.Height, block.NumTxs))
+	}
+	return summary.String()
+}
+
+func main() {
+	// 파일 경로 설정
+	txLogFile := "tx_log.txt"       // 트랜잭션 로그 파일
+	blockLogFile := "block_log.txt" // 블록 로그 파일
+
+	// 트랜잭션 로그 파싱
+	txLogs, err := parseTxLogs(txLogFile)
+	if err != nil {
+		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
+		return
+	}
+
+	// 블록 로그 파싱
+	blockLogs, err := parseBlockLogs(blockLogFile)
+	if err != nil {
+		fmt.Printf("블록 로그 파싱 실패: %v\n", err)
+		return
+	}
+
+	// Latency 및 TPS 계산
+	avgLatency, tps, err := calculateMetrics(txLogs, blockLogs)
+	if err != nil {
+		fmt.Printf("지표 계산 실패: %v\n", err)
+		return
+	}
+
+	// 블록 요약
+	blockSummary := summarizeBlocks(blockLogs)
+
+	// 결과 출력
+	fmt.Printf("Average Latency (ms): %.2f\n", avgLatency)
+	fmt.Printf("Throughput (TPS): %.2f\n", tps)
+	fmt.Println("\nBlock Summary:")
+	fmt.Println(blockSummary)
+}
