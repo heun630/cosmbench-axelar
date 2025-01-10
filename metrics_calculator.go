@@ -142,6 +142,7 @@ func main() {
 	for _, block := range blockLogs {
 		totalTransactions += block.NumTxs
 	}
+	fmt.Println("Total Transactions(All nodes): ", totalTransactions)
 
 	// Latency 계산 (밀리초 -> 초로 변환)
 	latencySeconds := float64(maxTimestamp-minTimestamp) / 1000.0
@@ -149,7 +150,7 @@ func main() {
 	// TPS 계산
 	var tps float64
 	if latencySeconds > 0 {
-		tps = float64(totalTransactions) / latencySeconds
+		tps = float64(totalTransactions/4) / latencySeconds
 	}
 
 	// Block Logs 출력
