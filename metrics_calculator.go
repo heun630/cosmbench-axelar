@@ -186,7 +186,7 @@ func main() {
 	blockSummary := summarizeBlocks(blockLogs)
 
 	// 결과 출력
-	fmt.Printf("Maximum Latency (ms): %d\n", maxLatency)
+	fmt.Printf("Maximum Latency (ms): %.2f\n", maxLatency)
 	fmt.Printf("Throughput (TPS): %.2f\n", tps)
 	fmt.Println("\nBlock Summary:")
 	fmt.Println(blockSummary)
