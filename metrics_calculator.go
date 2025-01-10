@@ -55,16 +55,19 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 
 // 블록 로그 병합 및 파싱
 func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
-	fmt.Printf("블록 로그 디렉토리 경로: %s\n", logDir)
+	fmt.Printf("블록 로그 디렉토리 경로: %s\n", logDir) // 디렉토리 확인
 	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
 	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("블록 로그 파일 검색 실패: %v", err)
 	}
 
+	fmt.Printf("발견된 블록 로그 파일: %v\n", files) // 발견된 파일 목록 출력
+
 	var blockLogs []BlockLog
 	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)`)
 
 	for _, file := range files {
+		fmt.Printf("파싱 중인 파일: %s\n", file) // 현재 처리 중인 파일
 		f, err := os.Open(file)
 		if err != nil {
 			return nil, fmt.Errorf("파일 열기 실패 (%s): %v", file, err)
@@ -80,6 +83,8 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
 				height, _ := strconv.Atoi(match[2])
 				numTxs, _ := strconv.Atoi(match[3])
 				blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
+			} else {
+				fmt.Printf("매칭 실패 라인: %s\n", line) // 매칭 실패한 라인 출력
 			}
 		}
 
