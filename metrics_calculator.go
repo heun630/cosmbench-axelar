@@ -77,18 +77,18 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			line := scanner.Text()
-			match := blockLogRegex.FindStringSubmatch(line)
+			// 컬러 코드 제거
+			colorCodeRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+			cleanedLine := colorCodeRegex.ReplaceAllString(line, "")
+
+			match := blockLogRegex.FindStringSubmatch(cleanedLine)
 			if len(match) > 0 {
 				timestamp, _ := strconv.ParseInt(match[1], 10, 64)
 				height, _ := strconv.Atoi(match[2])
 				numTxs, _ := strconv.Atoi(match[3])
-
-				// num_txs=0인 경우 제외
-				if numTxs > 0 {
-					blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
-				}
+				blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
 			} else {
-				fmt.Printf("매칭 실패 라인: %s\n", line) // 매칭 실패한 라인 출력
+				fmt.Printf("매칭 실패 라인: %s\n", cleanedLine)
 			}
 		}
 
