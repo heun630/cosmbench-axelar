@@ -145,7 +145,8 @@ func main() {
 	fmt.Println("Total Transactions(All nodes): ", totalTransactions)
 
 	// Latency 계산 (밀리초 -> 초로 변환)
-	latencySeconds := float64(maxTimestamp-minTimestamp) / 1000.0
+	latency := float64(maxTimestamp - minTimestamp)
+	latencySeconds := latency / 1000.0
 
 	// TPS 계산
 	var tps float64
@@ -166,7 +167,7 @@ func main() {
 	fmt.Printf("Max Timestamp (from blockLogs): %d\n", maxTimestamp)
 
 	// Latency 및 TPS 출력
-	fmt.Printf("Latency (s): %.2f\n", latencySeconds)
+	fmt.Printf("Latency (s): %.2f\n", latency)
 	fmt.Printf("Throughput (TPS): %.2f\n", tps)
 
 	// 블록 요약 출력
