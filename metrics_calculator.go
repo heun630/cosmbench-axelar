@@ -54,7 +54,6 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 
 // 블록 로그 병합 및 파싱
 func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
-	// output*.log 파일 검색
 	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
 	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("블록 로그 파일 검색 실패: %v", err)
