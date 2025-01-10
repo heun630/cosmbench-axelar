@@ -167,8 +167,8 @@ func main() {
 	fmt.Printf("Max Timestamp (from blockLogs): %d\n", maxTimestamp)
 
 	// Latency 및 TPS 출력
-	fmt.Printf("Latency (s): %.2f\n", latency)
-	fmt.Printf("Throughput (TPS): %.2f\n", tps)
+	fmt.Printf("Latency(ms): %.0f\n", latency)
+	fmt.Printf("Throughput (TPS): %.3f\n", tps)
 
 	// 블록 요약 출력
 	//blockSummary := summarizeBlocks(blockLogs)
