@@ -25,7 +25,7 @@ type BlockLog struct {
 
 // 트랜잭션 로그 파싱
 func parseTxLogs(filePath string) ([]TxLog, error) {
-	fmt.Printf("블록 로그 디렉토리 경로: %s\n", filePath)
+	fmt.Printf("트랜잭션 로그 파일 경로: %s\n", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
@@ -82,7 +82,11 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
 				timestamp, _ := strconv.ParseInt(match[1], 10, 64)
 				height, _ := strconv.Atoi(match[2])
 				numTxs, _ := strconv.Atoi(match[3])
-				blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
+
+				// num_txs=0인 경우 제외
+				if numTxs > 0 {
+					blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
+				}
 			} else {
 				fmt.Printf("매칭 실패 라인: %s\n", line) // 매칭 실패한 라인 출력
 			}
@@ -141,7 +145,7 @@ func summarizeBlocks(blockLogs []BlockLog) string {
 	return summary.String()
 }
 
-// main 함수에 디버깅 출력 추가
+// main 함수
 func main() {
 	txLogFile := "tx_log.txt" // 트랜잭션 로그 파일
 	logDir := "./"            // 블록 로그 파일이 위치한 디렉토리
