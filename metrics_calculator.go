@@ -64,7 +64,7 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
 	fmt.Printf("발견된 블록 로그 파일: %v\n", files) // 발견된 파일 목록 출력
 
 	var blockLogs []BlockLog
-	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)`)
+	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)[^0]`)
 
 	for _, file := range files {
 		fmt.Printf("파싱 중인 파일: %s\n", file) // 현재 처리 중인 파일
