@@ -25,6 +25,7 @@ type BlockLog struct {
 
 // 트랜잭션 로그 파싱
 func parseTxLogs(filePath string) ([]TxLog, error) {
+	fmt.Printf("블록 로그 디렉토리 경로: %s\n", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
@@ -54,6 +55,7 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 
 // 블록 로그 병합 및 파싱
 func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
+	fmt.Printf("블록 로그 디렉토리 경로: %s\n", logDir)
 	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
 	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("블록 로그 파일 검색 실패: %v", err)
@@ -134,10 +136,10 @@ func summarizeBlocks(blockLogs []BlockLog) string {
 	return summary.String()
 }
 
+// main 함수에 디버깅 출력 추가
 func main() {
-	// 로그 파일 경로 설정
 	txLogFile := "tx_log.txt" // 트랜잭션 로그 파일
-	logDir := "."             // 블록 로그 파일이 위치한 디렉토리
+	logDir := "./"            // 블록 로그 파일이 위치한 디렉토리
 
 	// 트랜잭션 로그 파싱
 	txLogs, err := parseTxLogs(txLogFile)
@@ -145,6 +147,7 @@ func main() {
 		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
 		return
 	}
+	fmt.Printf("파싱된 트랜잭션 로그: %v\n", txLogs)
 
 	// 블록 로그 병합 및 파싱
 	blockLogs, err := parseAndMergeBlockLogs(logDir)
@@ -152,6 +155,7 @@ func main() {
 		fmt.Printf("블록 로그 병합 및 파싱 실패: %v\n", err)
 		return
 	}
+	fmt.Printf("파싱된 블록 로그: %v\n", blockLogs)
 
 	// Latency 및 TPS 계산
 	avgLatency, tps, err := calculateMetrics(txLogs, blockLogs)
