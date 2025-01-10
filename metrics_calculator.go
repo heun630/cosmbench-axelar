@@ -137,10 +137,41 @@ func main() {
 		return
 	}
 
-	// 총 트랜잭션 수 계산
-	totalTransactions := 0
+	// Height별 중복 개수 확인
+	heightCount := make(map[int]int)
 	for _, block := range blockLogs {
-		totalTransactions += block.NumTxs
+		heightCount[block.Height]++
+	}
+
+	// 동적으로 노드 수 계산
+	nodeCount := 0
+	for _, count := range heightCount {
+		if count > nodeCount {
+			nodeCount = count
+		}
+	}
+
+	// 노드별 블록 로그 분리
+	nodeBlockLogs := make(map[int][]BlockLog) // 노드별 블록 로그 저장
+	for _, block := range blockLogs {
+		nodeID := (block.Height - 1) % nodeCount // 노드 ID 계산
+		nodeBlockLogs[nodeID] = append(nodeBlockLogs[nodeID], block)
+	}
+
+	// 노드별 블록 및 트랜잭션 요약 출력
+	totalTransactions := 0
+	totalBlocks := 0
+	fmt.Println("Node-wise Block Summary:")
+	for nodeID, blocks := range nodeBlockLogs {
+		nodeTransactions := 0
+		fmt.Printf("Node %d:\n", nodeID)
+		for _, block := range blocks {
+			totalBlocks++
+			nodeTransactions += block.NumTxs
+			totalTransactions += block.NumTxs
+			fmt.Printf("  Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
+		}
+		fmt.Printf("  Total Transactions (Node %d): %d\n", nodeID, nodeTransactions)
 	}
 
 	// Latency 계산 (밀리초 -> 초로 변환)
@@ -152,22 +183,11 @@ func main() {
 		tps = float64(totalTransactions) / latencySeconds
 	}
 
-	// Block Logs 출력
-	fmt.Printf("Block Logs:\n")
-	for _, block := range blockLogs {
-		fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
-	}
-
-	// Min/Max Timestamp 출력
-	fmt.Printf("Min Timestamp (from txLogs): %d\n", minTimestamp)
+	// Min/Max Timestamp 및 총 블록/트랜잭션 출력
+	fmt.Printf("\nMin Timestamp (from txLogs): %d\n", minTimestamp)
 	fmt.Printf("Max Timestamp (from blockLogs): %d\n", maxTimestamp)
-
-	// Latency 및 TPS 출력
+	fmt.Printf("Total Blocks: %d\n", totalBlocks)
+	fmt.Printf("Total Transactions: %d\n", totalTransactions)
 	fmt.Printf("Latency (s): %.2f\n", latencySeconds)
 	fmt.Printf("Throughput (TPS): %.2f\n", tps)
-
-	// 블록 요약 출력
-	blockSummary := summarizeBlocks(blockLogs)
-	fmt.Println("\nBlock Summary:")
-	fmt.Println(blockSummary)
 }
