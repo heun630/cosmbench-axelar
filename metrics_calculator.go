@@ -147,11 +147,13 @@ func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog) (float64, float64, e
 	return avgLatency, tps, nil
 }
 
-// 블록별 트랜잭션 요약
+// 블록별 트랜잭션 요약 (트랜잭션이 있는 블록만 출력)
 func summarizeBlocks(blockLogs []BlockLog) string {
 	var summary strings.Builder
 	for _, block := range blockLogs {
-		summary.WriteString(fmt.Sprintf("Height %d: %d transactions\n", block.Height, block.NumTxs))
+		if block.NumTxs > 0 {
+			summary.WriteString(fmt.Sprintf("Height %d: %d transactions\n", block.Height, block.NumTxs))
+		}
 	}
 	return summary.String()
 }
