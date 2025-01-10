@@ -142,7 +142,7 @@ func main() {
 	for _, block := range blockLogs {
 		totalTransactions += block.NumTxs
 	}
-	fmt.Println("Total Transactions(All nodes): ", totalTransactions)
+	fmt.Println("Total Transactions (All nodes): ", totalTransactions)
 
 	// Latency 계산 (밀리초 -> 초로 변환)
 	latency := float64(maxTimestamp - minTimestamp)
@@ -154,11 +154,21 @@ func main() {
 		tps = float64(totalTransactions/4) / latencySeconds
 	}
 
-	// Block Logs 출력
-	fmt.Printf("Block Logs:\n")
+	// 노드별 블록 로그 분리
+	nodeBlockLogs := make(map[int][]BlockLog) // 노드별 블록 로그 저장
 	for _, block := range blockLogs {
 		if block.NumTxs > 0 {
-			fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
+			nodeID := block.Height % 4 // 4개의 노드로 가정 (노드 ID는 0~3)
+			nodeBlockLogs[nodeID] = append(nodeBlockLogs[nodeID], block)
+		}
+	}
+
+	// 노드별 블록 로그 출력
+	fmt.Println("Block Logs by Node:")
+	for nodeID, blocks := range nodeBlockLogs {
+		fmt.Printf("Node %d:\n", nodeID)
+		for _, block := range blocks {
+			fmt.Printf("  Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
 		}
 	}
 
