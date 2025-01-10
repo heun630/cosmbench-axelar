@@ -60,8 +60,10 @@ func readEncodedTxs(dir string) ([]string, error) {
 }
 
 // sendTransaction은 단일 트랜잭션을 지정된 노드로 전송합니다
-func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup) {
+// sendTransaction은 단일 트랜잭션을 지정된 노드로 전송합니다
+func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
+
 	// tx 순서(tx sequence index)에 따라 호스트와 포트번호를 라운드로빈 방식으로 선택
 	host := HOSTS[txIdx%len(HOSTS)]
 	port := REST_PORTS[txIdx%len(REST_PORTS)]
@@ -90,9 +92,16 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup) {
 	// Content-Type 헤더 설정
 	req.Header.Set("Content-Type", "application/json")
 
+	// 현재 시각 기록 (Unix 밀리초 타임스탬프)
+	timestamp := time.Now().UnixMilli()
+
+	// 로그 파일에 기록
+	fileMutex.Lock()
+	fmt.Fprintf(logFile, "txIdx: %d time: %d\n", txIdx, timestamp)
+	fileMutex.Unlock()
+
 	// HTTP 클라이언트를 사용하여 요청 전송
 	client := &http.Client{}
-	println("txIdx:", txIdx, "time:", time.Now().UnixMilli()) // txIDx 코멘트: 고쳐놓기
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("[TxSequence %d, Host %s] 요청 전송 실패: %v\n", txIdx, host, err)
@@ -143,6 +152,18 @@ func main() {
 
 	fmt.Printf("총 트랜잭션 수: %d\n", numTxs)
 
+	// 로그 파일 열기
+	logFileName := "tx_log.txt"
+	logFile, err := os.Create(logFileName)
+	if err != nil {
+		fmt.Printf("로그 파일 생성 실패: %v\n", err)
+		return
+	}
+	defer logFile.Close()
+
+	// Mutex 생성
+	var fileMutex sync.Mutex
+
 	// WaitGroup 생성
 	var wg sync.WaitGroup
 
@@ -163,7 +184,7 @@ func main() {
 		// txsToSend 만큼의 트랜잭션 전송
 		for j := 0; j < txsToSend; j++ {
 			wg.Add(1)
-			go sendTransaction(sentTxs+j, txs[sentTxs+j], &wg)
+			go sendTransaction(sentTxs+j, txs[sentTxs+j], &wg, &fileMutex, logFile)
 		}
 
 		// 모든 goroutine이 완료될 때까지 대기
@@ -175,15 +196,14 @@ func main() {
 		// 1초에 한 번씩 실행되도록 조절
 		elapsedTime := time.Since(startTime).Milliseconds()
 		if elapsedTime < 1000 {
-			duration := time.Duration(1000-elapsedTime) * time.Millisecond
-			println("duration time:", duration)
-			time.Sleep(duration)
+			time.Sleep(time.Duration(1000-elapsedTime) * time.Millisecond)
 		}
 
-		// 모든 트랜잭션을 전송했면 종료
+		// 모든 트랜잭션을 전송했으면 종료
 		if sentTxs >= numTxs {
 			break
 		}
 	}
 	fmt.Printf("모든 트랜잭션 전송 완료 (총 %d개)\n", sentTxs)
+	fmt.Printf("로그가 %s에 저장되었습니다.\n", logFileName)
 }
