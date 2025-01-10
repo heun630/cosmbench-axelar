@@ -130,26 +130,20 @@ func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog) (float64, float64, e
 	tps := float64(totalTransactions) / totalTimeSeconds
 
 	// Latency 계산
-	var totalLatency int64
-	var latencyCount int64
-
+	var maxLatency float64
 	for _, tx := range txLogs {
-		var committedBlock BlockLog
 		for _, block := range blockLogs {
 			if tx.Timestamp <= block.Timestamp {
-				committedBlock = block
+				latency := float64(block.Timestamp - tx.Timestamp)
+				if latency > maxLatency {
+					maxLatency = latency
+				}
 				break
 			}
 		}
-
-		if committedBlock.Timestamp != 0 {
-			totalLatency += committedBlock.Timestamp - tx.Timestamp
-			latencyCount++
-		}
 	}
 
-	avgLatency := float64(totalLatency) / float64(latencyCount)
-	return avgLatency, tps, nil
+	return maxLatency, tps, nil
 }
 
 // 블록별 트랜잭션 요약 (트랜잭션이 있는 블록만 출력)
@@ -163,7 +157,6 @@ func summarizeBlocks(blockLogs []BlockLog) string {
 	return summary.String()
 }
 
-// main 함수
 func main() {
 	txLogFile := "tx_log.txt" // 트랜잭션 로그 파일
 	logDir := "./"            // 블록 로그 파일이 위치한 디렉토리
@@ -174,7 +167,6 @@ func main() {
 		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
 		return
 	}
-	//fmt.Printf("파싱된 트랜잭션 로그: %v\n", txLogs)
 
 	// 블록 로그 병합 및 파싱
 	blockLogs, err := parseAndMergeBlockLogs(logDir)
@@ -182,10 +174,9 @@ func main() {
 		fmt.Printf("블록 로그 병합 및 파싱 실패: %v\n", err)
 		return
 	}
-	//fmt.Printf("파싱된 블록 로그: %v\n", blockLogs)
 
 	// Latency 및 TPS 계산
-	avgLatency, tps, err := calculateMetrics(txLogs, blockLogs)
+	maxLatency, tps, err := calculateMetrics(txLogs, blockLogs)
 	if err != nil {
 		fmt.Printf("지표 계산 실패: %v\n", err)
 		return
@@ -195,7 +186,7 @@ func main() {
 	blockSummary := summarizeBlocks(blockLogs)
 
 	// 결과 출력
-	fmt.Printf("Average Latency (ms): %.2f\n", avgLatency)
+	fmt.Printf("Maximum Latency (ms): %d\n", maxLatency)
 	fmt.Printf("Throughput (TPS): %.2f\n", tps)
 	fmt.Println("\nBlock Summary:")
 	fmt.Println(blockSummary)
