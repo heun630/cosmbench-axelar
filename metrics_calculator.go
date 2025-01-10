@@ -68,7 +68,7 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, int64, error) {
 	}
 
 	var blockLogs []BlockLog
-	var maxTimestamp int64 = 0
+	var maxTimestamp int64
 	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)`)
 
 	for _, file := range files {
@@ -91,34 +91,18 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, int64, error) {
 				height, _ := strconv.Atoi(match[2])
 				numTxs, _ := strconv.Atoi(match[3])
 
-				// 중복 데이터 방지
-				exists := false
-				for _, b := range blockLogs {
-					if b.Height == height {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
-				}
+				blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
 
-				// num_txs > 0일 경우, 최대 타임스탬프 갱신
+				// 최대 타임스탬프 계산 (NumTxs > 0 인 경우만)
 				if numTxs > 0 && timestamp > maxTimestamp {
 					maxTimestamp = timestamp
 				}
-			} else {
-				fmt.Printf("매칭 실패 라인: %s\n", cleanedLine)
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
 			return nil, 0, fmt.Errorf("파일 읽기 실패 (%s): %v", file, err)
 		}
-	}
-
-	if maxTimestamp == 0 {
-		return blockLogs, 0, fmt.Errorf("유효한 타임스탬프를 찾을 수 없습니다")
 	}
 
 	return blockLogs, maxTimestamp, nil
