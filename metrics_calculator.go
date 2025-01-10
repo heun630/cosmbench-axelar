@@ -137,20 +137,37 @@ func main() {
 		return
 	}
 
-	// blockLogs, minTimestamp, maxTimestamp 출력
+	// 총 트랜잭션 수 계산
+	totalTransactions := 0
+	for _, block := range blockLogs {
+		totalTransactions += block.NumTxs
+	}
+
+	// Latency 계산 (밀리초 -> 초로 변환)
+	latencySeconds := float64(maxTimestamp-minTimestamp) / 1000.0
+
+	// TPS 계산
+	var tps float64
+	if latencySeconds > 0 {
+		tps = float64(totalTransactions) / latencySeconds
+	}
+
+	// Block Logs 출력
 	fmt.Printf("Block Logs:\n")
 	for _, block := range blockLogs {
 		fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
 	}
+
+	// Min/Max Timestamp 출력
 	fmt.Printf("Min Timestamp (from txLogs): %d\n", minTimestamp)
 	fmt.Printf("Max Timestamp (from blockLogs): %d\n", maxTimestamp)
 
-	// 블록 요약
-	//blockSummary := summarizeBlocks(blockLogs)
+	// Latency 및 TPS 출력
+	fmt.Printf("Latency (s): %.2f\n", latencySeconds)
+	fmt.Printf("Throughput (TPS): %.2f\n", tps)
 
-	// 결과 출력
-	//fmt.Printf("Maximum Latency (ms): %.2f\n", maxLatency)
-	//fmt.Printf("Throughput (TPS): %.2f\n", tps)
-	//fmt.Println("\nBlock Summary:")
-	//fmt.Println(blockSummary)
+	// 블록 요약 출력
+	blockSummary := summarizeBlocks(blockLogs)
+	fmt.Println("\nBlock Summary:")
+	fmt.Println(blockSummary)
 }
