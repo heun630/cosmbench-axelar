@@ -124,38 +124,6 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, int64, error) {
 	return blockLogs, maxTimestamp, nil
 }
 
-func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog, minTimestamp int64, maxTimestamp int64) (float64, float64, error) {
-	if len(txLogs) == 0 || len(blockLogs) == 0 {
-		return 0, 0, fmt.Errorf("로그 데이터가 부족합니다")
-	}
-
-	// Start and end time
-	totalTimeSeconds := float64(maxTimestamp-minTimestamp) / 1000.0
-
-	// TPS 계산
-	totalTransactions := 0
-	for _, block := range blockLogs {
-		totalTransactions += block.NumTxs
-	}
-	tps := float64(totalTransactions) / totalTimeSeconds
-
-	// Latency 계산
-	var maxLatency float64
-	for _, tx := range txLogs {
-		for _, block := range blockLogs {
-			if tx.Timestamp <= block.Timestamp {
-				latency := float64(block.Timestamp - tx.Timestamp)
-				if latency > maxLatency {
-					maxLatency = latency
-				}
-				break
-			}
-		}
-	}
-
-	return maxLatency, tps, nil
-}
-
 // 블록별 트랜잭션 요약 (트랜잭션이 있는 블록만 출력)
 func summarizeBlocks(blockLogs []BlockLog) string {
 	var summary strings.Builder
@@ -172,7 +140,7 @@ func main() {
 	logDir := "./"            // 블록 로그 파일이 위치한 디렉토리
 
 	// 트랜잭션 로그 파싱
-	txLogs, minTimestamp, err := parseTxLogs(txLogFile)
+	_, minTimestamp, err := parseTxLogs(txLogFile)
 	if err != nil {
 		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
 		return
@@ -185,19 +153,20 @@ func main() {
 		return
 	}
 
-	// Latency 및 TPS 계산
-	maxLatency, tps, err := calculateMetrics(txLogs, blockLogs, minTimestamp, maxTimestamp)
-	if err != nil {
-		fmt.Printf("지표 계산 실패: %v\n", err)
-		return
+	// blockLogs, minTimestamp, maxTimestamp 출력
+	fmt.Printf("Block Logs:\n")
+	for _, block := range blockLogs {
+		fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
 	}
+	fmt.Printf("Min Timestamp (from txLogs): %d\n", minTimestamp)
+	fmt.Printf("Max Timestamp (from blockLogs): %d\n", maxTimestamp)
 
 	// 블록 요약
-	blockSummary := summarizeBlocks(blockLogs)
+	//blockSummary := summarizeBlocks(blockLogs)
 
 	// 결과 출력
-	fmt.Printf("Maximum Latency (ms): %.2f\n", maxLatency)
-	fmt.Printf("Throughput (TPS): %.2f\n", tps)
-	fmt.Println("\nBlock Summary:")
-	fmt.Println(blockSummary)
+	//fmt.Printf("Maximum Latency (ms): %.2f\n", maxLatency)
+	//fmt.Printf("Throughput (TPS): %.2f\n", tps)
+	//fmt.Println("\nBlock Summary:")
+	//fmt.Println(blockSummary)
 }
