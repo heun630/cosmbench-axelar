@@ -61,24 +61,20 @@ func parseTxLogs(filePath string) ([]TxLog, int64, error) {
 	return txLogs, minTimestamp, nil
 }
 
-// 블록 로그 병합 및 파싱
-func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
-	//fmt.Printf("블록 로그 디렉토리 경로: %s\n", logDir)
+func parseAndMergeBlockLogs(logDir string) ([]BlockLog, int64, error) {
 	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
 	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("블록 로그 파일 검색 실패: %v", err)
+		return nil, 0, fmt.Errorf("블록 로그 파일 검색 실패: %v", err)
 	}
 
-	//fmt.Printf("발견된 블록 로그 파일: %v\n", files)
-
 	var blockLogs []BlockLog
+	var maxTimestamp int64 = 0
 	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*num_txs=(\d+)`)
 
 	for _, file := range files {
-		//fmt.Printf("파싱 중인 파일: %s\n", file)
 		f, err := os.Open(file)
 		if err != nil {
-			return nil, fmt.Errorf("파일 열기 실패 (%s): %v", file, err)
+			return nil, 0, fmt.Errorf("파일 열기 실패 (%s): %v", file, err)
 		}
 		defer f.Close()
 
@@ -106,29 +102,35 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, error) {
 				if !exists {
 					blockLogs = append(blockLogs, BlockLog{Timestamp: timestamp, Height: height, NumTxs: numTxs})
 				}
+
+				// num_txs > 0일 경우, 최대 타임스탬프 갱신
+				if numTxs > 0 && timestamp > maxTimestamp {
+					maxTimestamp = timestamp
+				}
 			} else {
 				fmt.Printf("매칭 실패 라인: %s\n", cleanedLine)
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("파일 읽기 실패 (%s): %v", file, err)
+			return nil, 0, fmt.Errorf("파일 읽기 실패 (%s): %v", file, err)
 		}
 	}
 
-	return blockLogs, nil
+	if maxTimestamp == 0 {
+		return blockLogs, 0, fmt.Errorf("유효한 타임스탬프를 찾을 수 없습니다")
+	}
+
+	return blockLogs, maxTimestamp, nil
 }
 
-// Latency 및 TPS 계산
-func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog) (float64, float64, error) {
+func calculateMetrics(txLogs []TxLog, blockLogs []BlockLog, minTimestamp int64, maxTimestamp int64) (float64, float64, error) {
 	if len(txLogs) == 0 || len(blockLogs) == 0 {
 		return 0, 0, fmt.Errorf("로그 데이터가 부족합니다")
 	}
 
 	// Start and end time
-	startTime := txLogs[0].Timestamp
-	endTime := blockLogs[len(blockLogs)-1].Timestamp
-	totalTimeSeconds := float64(endTime-startTime) / 1000.0
+	totalTimeSeconds := float64(maxTimestamp-minTimestamp) / 1000.0
 
 	// TPS 계산
 	totalTransactions := 0
@@ -175,17 +177,16 @@ func main() {
 		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
 		return
 	}
-	fmt.Println("minTimestamp: ", minTimestamp)
 
 	// 블록 로그 병합 및 파싱
-	blockLogs, err := parseAndMergeBlockLogs(logDir)
+	blockLogs, maxTimestamp, err := parseAndMergeBlockLogs(logDir)
 	if err != nil {
 		fmt.Printf("블록 로그 병합 및 파싱 실패: %v\n", err)
 		return
 	}
 
 	// Latency 및 TPS 계산
-	maxLatency, tps, err := calculateMetrics(txLogs, blockLogs)
+	maxLatency, tps, err := calculateMetrics(txLogs, blockLogs, minTimestamp, maxTimestamp)
 	if err != nil {
 		fmt.Printf("지표 계산 실패: %v\n", err)
 		return
