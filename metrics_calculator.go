@@ -23,16 +23,15 @@ type BlockLog struct {
 	NumTxs    int
 }
 
-// 트랜잭션 로그 파싱
-func parseTxLogs(filePath string) ([]TxLog, error) {
-	//fmt.Printf("트랜잭션 로그 파일 경로: %s\n", filePath)
+func parseTxLogs(filePath string) ([]TxLog, int64, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
+		return nil, 0, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
 	}
 	defer file.Close()
 
 	var txLogs []TxLog
+	var minTimestamp int64 = -1
 	scanner := bufio.NewScanner(file)
 	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+time:\s+(\d+)`)
 
@@ -43,14 +42,23 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 			txIdx, _ := strconv.Atoi(match[1])
 			timestamp, _ := strconv.ParseInt(match[2], 10, 64)
 			txLogs = append(txLogs, TxLog{TxIdx: txIdx, Timestamp: timestamp})
+
+			// 최소 타임스탬프 계산
+			if minTimestamp == -1 || timestamp < minTimestamp {
+				minTimestamp = timestamp
+			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("트랜잭션 로그 파일 읽기 실패: %v", err)
+		return nil, 0, fmt.Errorf("트랜잭션 로그 파일 읽기 실패: %v", err)
 	}
 
-	return txLogs, nil
+	if minTimestamp == -1 {
+		return nil, 0, fmt.Errorf("유효한 타임스탬프를 찾을 수 없습니다")
+	}
+
+	return txLogs, minTimestamp, nil
 }
 
 // 블록 로그 병합 및 파싱
@@ -162,11 +170,12 @@ func main() {
 	logDir := "./"            // 블록 로그 파일이 위치한 디렉토리
 
 	// 트랜잭션 로그 파싱
-	txLogs, err := parseTxLogs(txLogFile)
+	txLogs, minTimestamp, err := parseTxLogs(txLogFile)
 	if err != nil {
 		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
 		return
 	}
+	fmt.Println("minTimestamp: ", minTimestamp)
 
 	// 블록 로그 병합 및 파싱
 	blockLogs, err := parseAndMergeBlockLogs(logDir)
