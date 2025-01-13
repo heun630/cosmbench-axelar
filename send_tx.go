@@ -59,7 +59,7 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
-// sendTransaction은 단일 트랜잭션을 지정된 노드로 전송합니다
+// sendTransaction은 단일 트랜잭션을 지정된 노드로 전송하고 height 정보를 기록합니다.
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
@@ -91,14 +91,6 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	// Content-Type 헤더 설정
 	req.Header.Set("Content-Type", "application/json")
 
-	// 현재 시각 기록 (Unix 밀리초 타임스탬프)
-	timestamp := time.Now().UnixMilli()
-
-	// 로그 파일에 기록
-	fileMutex.Lock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d\n", txIdx, timestamp)
-	fileMutex.Unlock()
-
 	// HTTP 클라이언트를 사용하여 요청 전송
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -114,6 +106,29 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		fmt.Printf("[TxSequence %d, Host %s] 응답 읽기 실패: %v\n", txIdx, host, err)
 		return
 	}
+
+	// 응답에서 height 정보 추출
+	var responseMap map[string]interface{}
+	if err := json.Unmarshal(body, &responseMap); err != nil {
+		fmt.Printf("[TxSequence %d, Host %s] 응답 파싱 실패: %v\n", txIdx, host, err)
+		return
+	}
+
+	// height 추출 (JSON 구조에 따라 수정 필요)
+	height := "unknown"
+	if txResponse, ok := responseMap["tx_response"].(map[string]interface{}); ok {
+		if h, ok := txResponse["height"].(string); ok {
+			height = h
+		}
+	}
+
+	// 현재 시각 기록 (Unix 밀리초 타임스탬프)
+	timestamp := time.Now().UnixMilli()
+
+	// 로그 파일에 기록
+	fileMutex.Lock()
+	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, height)
+	fileMutex.Unlock()
 
 	fmt.Printf("[TxSequence %d, Host %s, Port %s] 응답: %s\n", txIdx, host, port, string(body))
 }
