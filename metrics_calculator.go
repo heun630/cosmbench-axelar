@@ -4,34 +4,33 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-// TxLog는 트랜잭션 로그 데이터를 저장하는 구조체
 type TxLog struct {
 	TxIdx     int
 	Timestamp int64
 }
 
-// BlockLog는 블록 로그 데이터를 저장하는 구조체
 type BlockLog struct {
 	Timestamp int64
 	Height    int
 	NumTxs    int
 }
 
-func parseTxLogs(filePath string) ([]TxLog, int64, error) {
+func parseTxLogs(filePath string) ([]TxLog, []int64, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, 0, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
+		return nil, nil, fmt.Errorf("트랜잭션 로그 파일 열기 실패: %v", err)
 	}
 	defer file.Close()
 
 	var txLogs []TxLog
-	var minTimestamp int64 = -1
+	var timestamps []int64
 	scanner := bufio.NewScanner(file)
 	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+time:\s+(\d+)`)
 
@@ -42,23 +41,19 @@ func parseTxLogs(filePath string) ([]TxLog, int64, error) {
 			txIdx, _ := strconv.Atoi(match[1])
 			timestamp, _ := strconv.ParseInt(match[2], 10, 64)
 			txLogs = append(txLogs, TxLog{TxIdx: txIdx, Timestamp: timestamp})
-
-			// 최소 타임스탬프 계산
-			if minTimestamp == -1 || timestamp < minTimestamp {
-				minTimestamp = timestamp
-			}
+			timestamps = append(timestamps, timestamp)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, 0, fmt.Errorf("트랜잭션 로그 파일 읽기 실패: %v", err)
+		return nil, nil, fmt.Errorf("트랜잭션 로그 파일 읽기 실패: %v", err)
 	}
 
-	if minTimestamp == -1 {
-		return nil, 0, fmt.Errorf("유효한 타임스탬프를 찾을 수 없습니다")
+	if len(timestamps) == 0 {
+		return nil, nil, fmt.Errorf("유효한 타임스탬프를 찾을 수 없습니다")
 	}
 
-	return txLogs, minTimestamp, nil
+	return txLogs, timestamps, nil
 }
 
 func parseAndMergeBlockLogs(logDir string) ([]BlockLog, int64, error) {
@@ -108,70 +103,59 @@ func parseAndMergeBlockLogs(logDir string) ([]BlockLog, int64, error) {
 	return blockLogs, maxTimestamp, nil
 }
 
-// 블록별 트랜잭션 요약 (트랜잭션이 있는 블록만 출력)
-func summarizeBlocks(blockLogs []BlockLog) string {
-	var summary strings.Builder
-	for _, block := range blockLogs {
-		if block.NumTxs > 0 {
-			summary.WriteString(fmt.Sprintf("Height %d: %d transactions\n", block.Height, block.NumTxs))
+func calculateLatency(txLogs []TxLog, blockLogs []BlockLog) error {
+	for _, tx := range txLogs {
+		var blockTimestamp int64 = -1
+
+		// 블록 로그에서 해당 tx가 포함된 height 확인
+		for _, block := range blockLogs {
+			// CLI로 트랜잭션이 해당 블록에 있는지 확인
+			cmd := exec.Command("axelar", "query", "block", strconv.Itoa(block.Height))
+			output, err := cmd.Output()
+			if err != nil {
+				return fmt.Errorf("블록 확인 실패 (height: %d): %v", block.Height, err)
+			}
+
+			// 블록에 tx 포함 여부 확인
+			if strings.Contains(string(output), strconv.Itoa(tx.TxIdx)) {
+				blockTimestamp = block.Timestamp
+				break
+			}
 		}
+
+		if blockTimestamp == -1 {
+			fmt.Printf("트랜잭션 %d를 포함한 블록을 찾을 수 없습니다.\n", tx.TxIdx)
+			continue
+		}
+
+		// Latency 계산
+		latency := blockTimestamp - tx.Timestamp
+		fmt.Printf("Tx %d: Latency = %d ms\n", tx.TxIdx, latency)
 	}
-	return summary.String()
+
+	return nil
 }
 
 func main() {
-	txLogFile := "tx_log.txt" // 트랜잭션 로그 파일
-	logDir := "./"            // 블록 로그 파일이 위치한 디렉토리
+	txLogFile := "tx_log.txt"
+	logDir := "./"
 
 	// 트랜잭션 로그 파싱
-	_, minTimestamp, err := parseTxLogs(txLogFile)
+	txLogs, _, err := parseTxLogs(txLogFile)
 	if err != nil {
 		fmt.Printf("트랜잭션 로그 파싱 실패: %v\n", err)
 		return
 	}
 
 	// 블록 로그 병합 및 파싱
-	blockLogs, maxTimestamp, err := parseAndMergeBlockLogs(logDir)
+	blockLogs, _, err := parseAndMergeBlockLogs(logDir)
 	if err != nil {
 		fmt.Printf("블록 로그 병합 및 파싱 실패: %v\n", err)
 		return
 	}
 
-	// 총 트랜잭션 수 계산
-	totalTransactions := 0
-	for _, block := range blockLogs {
-		totalTransactions += block.NumTxs
+	// Latency 계산
+	if err := calculateLatency(txLogs, blockLogs); err != nil {
+		fmt.Printf("Latency 계산 실패: %v\n", err)
 	}
-	fmt.Println("Total Transactions (All nodes): ", totalTransactions)
-
-	// Latency 계산 (밀리초 -> 초로 변환)
-	latency := float64(maxTimestamp - minTimestamp)
-	latencySeconds := latency / 1000.0
-
-	// TPS 계산
-	var tps float64
-	if latencySeconds > 0 {
-		tps = float64(totalTransactions/4) / latencySeconds
-	}
-
-	// Block Logs 출력
-	fmt.Printf("Block Logs:\n")
-	for _, block := range blockLogs {
-		if block.NumTxs > 0 {
-			fmt.Printf("Height: %d, Timestamp: %d, NumTxs: %d\n", block.Height, block.Timestamp, block.NumTxs)
-		}
-	}
-
-	// Min/Max Timestamp 출력
-	fmt.Printf("Min Timestamp (from txLogs): %d\n", minTimestamp)
-	fmt.Printf("Max Timestamp (from blockLogs): %d\n", maxTimestamp)
-
-	// Latency 및 TPS 출력
-	fmt.Printf("Latency(ms): %.0f\n", latency)
-	fmt.Printf("Throughput (TPS): %.3f\n", tps)
-
-	// 블록 요약 출력
-	//blockSummary := summarizeBlocks(blockLogs)
-	//fmt.Println("\nBlock Summary:")
-	//fmt.Println(blockSummary)
 }

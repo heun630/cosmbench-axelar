@@ -60,7 +60,6 @@ func readEncodedTxs(dir string) ([]string, error) {
 }
 
 // sendTransaction은 단일 트랜잭션을 지정된 노드로 전송합니다
-// sendTransaction은 단일 트랜잭션을 지정된 노드로 전송합니다
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
