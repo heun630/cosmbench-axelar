@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -59,17 +58,15 @@ func extractHeightFromLog(logFileName string) (string, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	// Updated regex to match log format
-	heightRegex := regexp.MustCompile(`height=\^\\[0m([0-9]+)`)
+	// Simplified regex to capture height from the log
+	heightRegex := regexp.MustCompile(`height=([0-9]+)`)
 	latestHeight := "0"
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		// Match lines containing "committed state" and extract height
-		if strings.Contains(line, "committed state") {
-			if matches := heightRegex.FindStringSubmatch(line); matches != nil {
-				latestHeight = matches[1]
-			}
+		if matches := heightRegex.FindStringSubmatch(line); matches != nil {
+			latestHeight = matches[1]
 		}
 	}
 
