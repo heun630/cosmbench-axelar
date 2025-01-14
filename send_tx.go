@@ -54,7 +54,6 @@ func removeANSI(text string) string {
 	return ansiRegex.ReplaceAllString(text, "")
 }
 
-// Extracts the latest height from the last 10 lines of the log file
 func extractHeightFromLog(logFileName string) (string, error) {
 	file, err := os.Open(logFileName)
 	if err != nil {
@@ -62,12 +61,20 @@ func extractHeightFromLog(logFileName string) (string, error) {
 	}
 	defer file.Close()
 
-	var lines []string
+	var latestHeight string
 	scanner := bufio.NewScanner(file)
+
+	// 파일의 최신 상태를 읽기 위해 모든 줄을 탐색
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-		if len(lines) > 10 {
-			lines = lines[1:] // Keep only the last 10 lines
+		line := scanner.Text()
+		// ANSI 코드 제거
+		cleanedLine := removeANSI(line)
+
+		// `height` 값 추출
+		heightRegex := regexp.MustCompile(`height=([0-9]+)`)
+		matches := heightRegex.FindStringSubmatch(cleanedLine)
+		if matches != nil {
+			latestHeight = matches[1]
 		}
 	}
 
@@ -75,15 +82,10 @@ func extractHeightFromLog(logFileName string) (string, error) {
 		return "", fmt.Errorf("failed to read log file: %v", err)
 	}
 
-	heightRegex := regexp.MustCompile(`height=([0-9]+)`)
-	for i := len(lines) - 1; i >= 0; i-- {
-		cleanedLine := removeANSI(lines[i])
-		if matches := heightRegex.FindStringSubmatch(cleanedLine); matches != nil {
-			return matches[1], nil
-		}
+	if latestHeight == "" {
+		return "", fmt.Errorf("no height found in log file")
 	}
-
-	return "", fmt.Errorf("no height found in log file")
+	return latestHeight, nil
 }
 
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
@@ -120,6 +122,8 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	defer resp.Body.Close()
 
 	timestamp := time.Now().UnixMilli()
+
+	// 로그에서 최신 높이를 읽어오기
 	latestHeight, err := extractHeightFromLog("output0.log")
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to extract height from log: %v\n", txIdx, err)
