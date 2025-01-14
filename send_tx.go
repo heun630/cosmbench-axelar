@@ -55,25 +55,34 @@ func removeANSI(text string) string {
 	return ansiRegex.ReplaceAllString(text, "")
 }
 
-// Extracts the latest height from the log file
+// Extracts the latest height from the end of the log file
 func extractHeightFromLog(logFileName string) (string, error) {
+	// Open the log file
 	file, err := os.Open(logFileName)
 	if err != nil {
 		return "", fmt.Errorf("failed to open log file: %v", err)
 	}
 	defer file.Close()
 
+	// Use a scanner to read the file from the end
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return "", fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	// Start reading the file from the end
 	scanner := bufio.NewScanner(file)
 	heightRegex := regexp.MustCompile(`height=([0-9]+)`) // Regex to match height
-	latestHeight := ""
+	var latestHeight string
 
+	// Move to the end of the file and scan lines backward
+	file.Seek(-fileInfo.Size(), os.SEEK_END)
 	for scanner.Scan() {
 		line := scanner.Text()
-		// Remove ANSI escape codes from the line
 		cleanedLine := removeANSI(line)
 		// Match the height from the cleaned line
 		if matches := heightRegex.FindStringSubmatch(cleanedLine); matches != nil {
-			latestHeight = matches[1] // Update to the latest found height
+			latestHeight = matches[1]
 		}
 	}
 
