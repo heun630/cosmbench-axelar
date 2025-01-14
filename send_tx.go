@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -30,6 +28,12 @@ type TxData struct {
 	Mode    string `json:"mode"`
 }
 
+type TxResponse struct {
+	Height string `json:"height"`
+	Code   int    `json:"code"`
+	Logs   string `json:"logs"`
+}
+
 func readEncodedTxs(dir string) ([]string, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
@@ -46,46 +50,6 @@ func readEncodedTxs(dir string) ([]string, error) {
 	}
 	numTxs = len(txs)
 	return txs, nil
-}
-
-// Remove ANSI escape codes from a string
-func removeANSI(text string) string {
-	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
-	return ansiRegex.ReplaceAllString(text, "")
-}
-
-func extractHeightFromLog(logFileName string) (string, error) {
-	file, err := os.Open(logFileName)
-	if err != nil {
-		return "", fmt.Errorf("failed to open log file: %v", err)
-	}
-	defer file.Close()
-
-	var latestHeight string
-	scanner := bufio.NewScanner(file)
-
-	// 파일의 최신 상태를 읽기 위해 모든 줄을 탐색
-	for scanner.Scan() {
-		line := scanner.Text()
-		// ANSI 코드 제거
-		cleanedLine := removeANSI(line)
-
-		// `height` 값 추출
-		heightRegex := regexp.MustCompile(`height=([0-9]+)`)
-		matches := heightRegex.FindStringSubmatch(cleanedLine)
-		if matches != nil {
-			latestHeight = matches[1]
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("failed to read log file: %v", err)
-	}
-
-	if latestHeight == "" {
-		return "", fmt.Errorf("no height found in log file")
-	}
-	return latestHeight, nil
 }
 
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
@@ -121,18 +85,28 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 	defer resp.Body.Close()
 
-	timestamp := time.Now().UnixMilli()
-
-	// 로그에서 최신 높이를 읽어오기
-	latestHeight, err := extractHeightFromLog("output0.log")
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("[TxIdx %d] Failed to extract height from log: %v\n", txIdx, err)
+		fmt.Printf("[TxIdx %d] Failed to read response: %v\n", txIdx, err)
 		return
 	}
 
+	var txResp TxResponse
+	if err := json.Unmarshal(body, &txResp); err != nil {
+		fmt.Printf("[TxIdx %d] Failed to parse response JSON: %v\n", txIdx, err)
+		return
+	}
+
+	if txResp.Code != 0 {
+		fmt.Printf("[TxIdx %d] Transaction failed: %s\n", txIdx, txResp.Logs)
+		return
+	}
+
+	timestamp := time.Now().UnixMilli()
+
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, latestHeight)
+	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, txResp.Height)
 }
 
 func main() {
