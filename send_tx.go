@@ -30,8 +30,7 @@ type TxData struct {
 
 type TxResponse struct {
 	Height string `json:"height"`
-	Code   int    `json:"code"`
-	Logs   string `json:"logs"`
+	TxHash string `json:"txhash"`
 }
 
 func readEncodedTxs(dir string) ([]string, error) {
@@ -52,6 +51,36 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
+func queryHeight(txHash string, host string, port string) (string, error) {
+	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("non-200 response: %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var queryResp struct {
+		TxResponse struct {
+			Height string `json:"height"`
+		} `json:"tx_response"`
+	}
+	if err := json.Unmarshal(body, &queryResp); err != nil {
+		return "", fmt.Errorf("failed to parse response JSON: %v", err)
+	}
+
+	return queryResp.TxResponse.Height, nil
+}
+
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
@@ -61,7 +90,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	requestData := TxData{
 		TxBytes: tx,
-		Mode:    "BROADCAST_MODE_SYNC",
+		Mode:    "BROADCAST_MODE_ASYNC",
 	}
 
 	jsonData, err := json.Marshal(requestData)
@@ -85,30 +114,39 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 	defer resp.Body.Close()
 
+	timestamp := time.Now().UnixMilli()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to read response: %v\n", txIdx, err)
 		return
 	}
 
-	fmt.Printf("[TxIdx %d] Response Body: %s\n", txIdx, string(body)) // 응답 데이터 출력
-
-	var txResp TxResponse
+	var txResp struct {
+		TxResponse struct {
+			TxHash string `json:"txhash"`
+		} `json:"tx_response"`
+	}
 	if err := json.Unmarshal(body, &txResp); err != nil {
 		fmt.Printf("[TxIdx %d] Failed to parse response JSON: %v\n", txIdx, err)
 		return
 	}
 
-	if txResp.Code != 0 {
-		fmt.Printf("[TxIdx %d] Transaction failed: %s\n", txIdx, txResp.Logs)
+	txHash := txResp.TxResponse.TxHash
+	if txHash == "" {
+		fmt.Printf("[TxIdx %d] Invalid txHash: %v\n", txIdx, txHash)
 		return
 	}
 
-	timestamp := time.Now().UnixMilli()
+	height, err := queryHeight(txHash, host, port)
+	if err != nil {
+		fmt.Printf("[TxIdx %d] Failed to query height for txHash %s: %v\n", txIdx, txHash, err)
+		return
+	}
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, txResp.Height)
+	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, height)
 }
 
 func main() {
