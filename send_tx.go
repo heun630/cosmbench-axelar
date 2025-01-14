@@ -58,7 +58,7 @@ func extractHeightFromLog(logFileName string) (string, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	heightRegex := regexp.MustCompile(`committed state.*height=\^\[0m([0-9]+)`) // Correct regex to extract height
+	heightRegex := regexp.MustCompile(`committed state.*?height=\^\[0m([0-9]+)`) // Correct regex to extract height
 	latestHeight := "0"
 
 	for scanner.Scan() {
