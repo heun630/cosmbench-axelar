@@ -49,6 +49,12 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
+// Remove ANSI escape codes from a string
+func removeANSI(text string) string {
+	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+	return ansiRegex.ReplaceAllString(text, "")
+}
+
 // Extracts the latest height from the log file
 func extractHeightFromLog(logFileName string) (string, error) {
 	file, err := os.Open(logFileName)
@@ -58,13 +64,15 @@ func extractHeightFromLog(logFileName string) (string, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	heightRegex := regexp.MustCompile(`height=([0-9]+)`) // Simplified regex
+	heightRegex := regexp.MustCompile(`height=([0-9]+)`) // Regex to match height
 	latestHeight := ""
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		// Match the height from the line
-		if matches := heightRegex.FindStringSubmatch(line); matches != nil {
+		// Remove ANSI escape codes from the line
+		cleanedLine := removeANSI(line)
+		// Match the height from the cleaned line
+		if matches := heightRegex.FindStringSubmatch(cleanedLine); matches != nil {
 			latestHeight = matches[1] // Update to the latest found height
 		}
 	}
