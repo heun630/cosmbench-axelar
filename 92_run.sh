@@ -18,7 +18,9 @@ rm -f "$LOG_FILE"
 # Start the binary and filter lines containing "committed state"
 $BINARY start --home "$CURRENT_DATA_DIR" 2>&1 | while IFS= read -r line; do
   if [[ "$line" == *"committed state"* ]]; then
-    # Append Unix millisecond timestamp to the line and write to log file
-    echo "$(date '+%s%3N') $line" >> "$LOG_FILE"
+    # Append Unix millisecond timestamp to the line
+    timestamped_line="$(date '+%s%3N') $line"
+    # Write to log file and print to screen
+    echo "$timestamped_line" | tee -a "$LOG_FILE"
   fi
 done
