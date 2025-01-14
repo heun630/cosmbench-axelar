@@ -30,9 +30,9 @@ type TxData struct {
 
 type TxResponse struct {
 	Height string `json:"height"`
-	TxHash string `json:"txhash"`
 }
 
+// Reads encoded transactions from a directory
 func readEncodedTxs(dir string) ([]string, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
@@ -51,12 +51,12 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
+// Queries the height of a transaction by its hash
 func queryHeight(txHash string, host string, port string) (string, error) {
 	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
-
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
+		return "", fmt.Errorf("failed to query txHash %s: %v", txHash, err)
 	}
 	defer resp.Body.Close()
 
@@ -64,23 +64,20 @@ func queryHeight(txHash string, host string, port string) (string, error) {
 		return "", fmt.Errorf("non-200 response: %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
-	}
-
-	var queryResp struct {
+	var txResp struct {
 		TxResponse struct {
 			Height string `json:"height"`
 		} `json:"tx_response"`
 	}
-	if err := json.Unmarshal(body, &queryResp); err != nil {
-		return "", fmt.Errorf("failed to parse response JSON: %v", err)
+
+	if err := json.NewDecoder(resp.Body).Decode(&txResp); err != nil {
+		return "", fmt.Errorf("failed to decode response for txHash %s: %v", txHash, err)
 	}
 
-	return queryResp.TxResponse.Height, nil
+	return txResp.TxResponse.Height, nil
 }
 
+// Sends a transaction and logs the response
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
@@ -114,27 +111,20 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 	defer resp.Body.Close()
 
-	timestamp := time.Now().UnixMilli()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("[TxIdx %d] Failed to read response: %v\n", txIdx, err)
-		return
-	}
-
-	var txResp struct {
+	var respData struct {
 		TxResponse struct {
 			TxHash string `json:"txhash"`
 		} `json:"tx_response"`
 	}
-	if err := json.Unmarshal(body, &txResp); err != nil {
-		fmt.Printf("[TxIdx %d] Failed to parse response JSON: %v\n", txIdx, err)
+
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		fmt.Printf("[TxIdx %d] Failed to decode response: %v\n", txIdx, err)
 		return
 	}
 
-	txHash := txResp.TxResponse.TxHash
+	txHash := respData.TxResponse.TxHash
 	if txHash == "" {
-		fmt.Printf("[TxIdx %d] Invalid txHash: %v\n", txIdx, txHash)
+		fmt.Printf("[TxIdx %d] No TxHash in response\n", txIdx)
 		return
 	}
 
@@ -144,6 +134,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		return
 	}
 
+	timestamp := time.Now().UnixMilli()
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
 	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, height)
