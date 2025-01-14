@@ -61,7 +61,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	requestData := TxData{
 		TxBytes: tx,
-		Mode:    "BROADCAST_MODE_ASYNC",
+		Mode:    "BROADCAST_MODE_SYNC",
 	}
 
 	jsonData, err := json.Marshal(requestData)
@@ -90,6 +90,8 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		fmt.Printf("[TxIdx %d] Failed to read response: %v\n", txIdx, err)
 		return
 	}
+
+	fmt.Printf("[TxIdx %d] Response Body: %s\n", txIdx, string(body)) // 응답 데이터 출력
 
 	var txResp TxResponse
 	if err := json.Unmarshal(body, &txResp); err != nil {
