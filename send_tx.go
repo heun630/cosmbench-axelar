@@ -98,7 +98,6 @@ func extractHeightFromLog(logFileName string) (string, error) {
 	return latestHeight, nil
 }
 
-// Sends a single transaction and logs its height
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
@@ -108,7 +107,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	requestData := TxData{
 		TxBytes: tx,
-		Mode:    "BROADCAST_MODE_ASYNC",
+		Mode:    "BROADCAST_MODE_SYNC", // Sync mode ensures transaction is processed
 	}
 
 	jsonData, err := json.Marshal(requestData)
@@ -145,8 +144,11 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		return
 	}
 
-	timestamp := time.Now().UnixMilli()
-	latestHeight, err := extractHeightFromLog("output0.log")
+	// Wait for log update
+	time.Sleep(500 * time.Millisecond) // Adjust based on block time
+
+	logFileName := fmt.Sprintf("output%d.log", txIdx%len(HOSTS))
+	latestHeight, err := extractHeightFromLog(logFileName)
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to extract height from log: %v\n", txIdx, err)
 		return
@@ -154,7 +156,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, latestHeight)
+	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, time.Now().UnixMilli(), latestHeight)
 	fmt.Printf("[TxIdx %d] Response: %s\n", txIdx, string(body))
 }
 
