@@ -7,13 +7,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
 )
 
-// Configuration
 var (
 	encodedTxDir = "/data/axelar/cosmbench-axelar/axelar-cosmbench_encoded_txs"
 	HOSTS        = []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"}
@@ -28,11 +29,6 @@ type TxData struct {
 	Mode    string `json:"mode"`
 }
 
-type TxResponse struct {
-	Height string `json:"height"`
-}
-
-// Reads encoded transactions from a directory
 func readEncodedTxs(dir string) ([]string, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
@@ -51,33 +47,22 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
-// Queries the height of a transaction by its hash
-func queryHeight(txHash string, host string, port string) (string, error) {
-	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
-	resp, err := http.Get(url)
+func queryHeightUsingCLI(txHash string) (string, error) {
+	cmd := exec.Command("axelard", "q", "tx", txHash, "--node", "tcp://127.0.0.1:22200")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to query txHash %s: %v", txHash, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("non-200 response: %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to execute axelard q command: %v\nOutput: %s", err, output)
 	}
 
-	var txResp struct {
-		TxResponse struct {
-			Height string `json:"height"`
-		} `json:"tx_response"`
+	// Extract height from command output
+	heightRegex := regexp.MustCompile(`height:\s+(\d+)`)
+	matches := heightRegex.FindStringSubmatch(string(output))
+	if matches == nil || len(matches) < 2 {
+		return "", fmt.Errorf("height not found in command output: %s", output)
 	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&txResp); err != nil {
-		return "", fmt.Errorf("failed to decode response for txHash %s: %v", txHash, err)
-	}
-
-	return txResp.TxResponse.Height, nil
+	return matches[1], nil
 }
 
-// Sends a transaction and logs the response
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
@@ -111,30 +96,35 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 	defer resp.Body.Close()
 
-	var respData struct {
-		TxResponse struct {
-			TxHash string `json:"txhash"`
-		} `json:"tx_response"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-		fmt.Printf("[TxIdx %d] Failed to decode response: %v\n", txIdx, err)
+	var result map[string]interface{}
+	body, _ := ioutil.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &result); err != nil {
+		fmt.Printf("[TxIdx %d] Failed to parse response: %v\n", txIdx, err)
 		return
 	}
 
-	txHash := respData.TxResponse.TxHash
+	txHash := result["tx_response"].(map[string]interface{})["txhash"].(string)
 	if txHash == "" {
-		fmt.Printf("[TxIdx %d] No TxHash in response\n", txIdx)
+		fmt.Printf("[TxIdx %d] Invalid txHash\n", txIdx)
 		return
 	}
 
-	height, err := queryHeight(txHash, host, port)
+	// Query height using axelard q command
+	var height string
+	for retries := 0; retries < 5; retries++ {
+		height, err = queryHeightUsingCLI(txHash)
+		if err == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to query height for txHash %s: %v\n", txIdx, txHash, err)
 		return
 	}
 
 	timestamp := time.Now().UnixMilli()
+
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
 	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, height)
