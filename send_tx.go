@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -45,6 +47,32 @@ func readEncodedTxs(dir string) ([]string, error) {
 	}
 	numTxs = len(txs)
 	return txs, nil
+}
+
+// Extracts the latest height from the log file
+func extractHeightFromLog(logFileName string) (string, error) {
+	file, err := os.Open(logFileName)
+	if err != nil {
+		return "", fmt.Errorf("failed to open log file: %v", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	heightRegex := regexp.MustCompile(`height=([0-9]+)`)
+	latestHeight := "0"
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if matches := heightRegex.FindStringSubmatch(line); matches != nil {
+			latestHeight = matches[1]
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read log file: %v", err)
+	}
+
+	return latestHeight, nil
 }
 
 // Sends a single transaction and logs its height
@@ -94,18 +122,16 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		return
 	}
 
-	height := "unknown"
-	if txResponse, ok := responseMap["tx_response"].(map[string]interface{}); ok {
-		if h, ok := txResponse["height"].(string); ok {
-			height = h
-		}
-	}
-
 	timestamp := time.Now().UnixMilli()
+	latestHeight, err := extractHeightFromLog("output0.log")
+	if err != nil {
+		fmt.Printf("[TxIdx %d] Failed to extract height from log: %v\n", txIdx, err)
+		return
+	}
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, height)
+	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, latestHeight)
 	fmt.Printf("[TxIdx %d] Response: %s\n", txIdx, string(body))
 }
 
