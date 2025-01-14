@@ -85,7 +85,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	requestData := TxData{
 		TxBytes: tx,
-		Mode:    "BROADCAST_MODE_BLOCK", // Block mode to ensure transaction is committed
+		Mode:    "BROADCAST_MODE_ASYNC",
 	}
 
 	jsonData, err := json.Marshal(requestData)
@@ -123,22 +123,6 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 
 	timestamp := time.Now().UnixMilli()
-	if txResponse, ok := responseMap["tx_response"].(map[string]interface{}); ok {
-		if code, ok := txResponse["code"].(float64); ok && code != 0 {
-			fmt.Printf("[TxIdx %d] Transaction failed with code: %.0f, log: %s\n", txIdx, code, txResponse["raw_log"])
-			return
-		}
-
-		if h, ok := txResponse["height"].(string); ok && h != "0" {
-			fileMutex.Lock()
-			defer fileMutex.Unlock()
-			fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, h)
-			fmt.Printf("[TxIdx %d] Response: %s\n", txIdx, string(body))
-			return
-		}
-	}
-
-	// Fetch latest height from logs if height is missing
 	latestHeight, err := extractHeightFromLog("output0.log")
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to extract height from log: %v\n", txIdx, err)
