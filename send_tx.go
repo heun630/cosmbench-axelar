@@ -17,20 +17,19 @@ import (
 
 // Configuration
 var (
-	encodedTxDir = "/data/axelar/cosmbench-axelar/axelar-cosmbench_encoded_txs" // Directory containing encoded transactions
-	HOSTS        = []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"} // Node IPs
-	REST_PORTS   = []string{"22200", "22201", "22202", "22203"}                 // Node REST API ports
-	InputTPS     int                                                            // Transactions per second
-	runTime      int                                                            // Runtime in seconds
-	numTxs       int                                                            // Total number of transactions
+	encodedTxDir = "/data/axelar/cosmbench-axelar/axelar-cosmbench_encoded_txs"
+	HOSTS        = []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"}
+	REST_PORTS   = []string{"22200", "22201", "22202", "22203"}
+	InputTPS     int
+	runTime      int
+	numTxs       int
 )
 
 type TxData struct {
-	TxBytes string `json:"tx_bytes"` // Encoded transaction data
-	Mode    string `json:"mode"`     // Broadcast mode
+	TxBytes string `json:"tx_bytes"`
+	Mode    string `json:"mode"`
 }
 
-// Reads encoded transactions from the specified directory
 func readEncodedTxs(dir string) ([]string, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
@@ -55,34 +54,20 @@ func removeANSI(text string) string {
 	return ansiRegex.ReplaceAllString(text, "")
 }
 
-// Extracts the latest height from the end of the log file
+// Extracts the latest height from the last 10 lines of the log file
 func extractHeightFromLog(logFileName string) (string, error) {
-	// Open the log file
 	file, err := os.Open(logFileName)
 	if err != nil {
 		return "", fmt.Errorf("failed to open log file: %v", err)
 	}
 	defer file.Close()
 
-	// Use a scanner to read the file from the end
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return "", fmt.Errorf("failed to get file info: %v", err)
-	}
-
-	// Start reading the file from the end
+	var lines []string
 	scanner := bufio.NewScanner(file)
-	heightRegex := regexp.MustCompile(`height=([0-9]+)`) // Regex to match height
-	var latestHeight string
-
-	// Move to the end of the file and scan lines backward
-	file.Seek(-fileInfo.Size(), os.SEEK_END)
 	for scanner.Scan() {
-		line := scanner.Text()
-		cleanedLine := removeANSI(line)
-		// Match the height from the cleaned line
-		if matches := heightRegex.FindStringSubmatch(cleanedLine); matches != nil {
-			latestHeight = matches[1]
+		lines = append(lines, scanner.Text())
+		if len(lines) > 10 {
+			lines = lines[1:] // Keep only the last 10 lines
 		}
 	}
 
@@ -90,12 +75,15 @@ func extractHeightFromLog(logFileName string) (string, error) {
 		return "", fmt.Errorf("failed to read log file: %v", err)
 	}
 
-	// Return the latest height found, or an error if none was found
-	if latestHeight == "" {
-		return "", fmt.Errorf("no height found in log file")
+	heightRegex := regexp.MustCompile(`height=([0-9]+)`)
+	for i := len(lines) - 1; i >= 0; i-- {
+		cleanedLine := removeANSI(lines[i])
+		if matches := heightRegex.FindStringSubmatch(cleanedLine); matches != nil {
+			return matches[1], nil
+		}
 	}
 
-	return latestHeight, nil
+	return "", fmt.Errorf("no height found in log file")
 }
 
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
@@ -107,7 +95,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	requestData := TxData{
 		TxBytes: tx,
-		Mode:    "BROADCAST_MODE_SYNC", // Sync mode ensures transaction is processed
+		Mode:    "BROADCAST_MODE_ASYNC",
 	}
 
 	jsonData, err := json.Marshal(requestData)
@@ -131,24 +119,8 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("[TxIdx %d] Response read error: %v\n", txIdx, err)
-		return
-	}
-
-	var responseMap map[string]interface{}
-	err = json.Unmarshal(body, &responseMap)
-	if err != nil {
-		fmt.Printf("[TxIdx %d] JSON unmarshal error: %v\n", txIdx, err)
-		return
-	}
-
-	// Wait for log update
-	time.Sleep(500 * time.Millisecond) // Adjust based on block time
-
-	logFileName := fmt.Sprintf("output%d.log", txIdx%len(HOSTS))
-	latestHeight, err := extractHeightFromLog(logFileName)
+	timestamp := time.Now().UnixMilli()
+	latestHeight, err := extractHeightFromLog("output0.log")
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to extract height from log: %v\n", txIdx, err)
 		return
@@ -156,8 +128,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, time.Now().UnixMilli(), latestHeight)
-	fmt.Printf("[TxIdx %d] Response: %s\n", txIdx, string(body))
+	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, latestHeight)
 }
 
 func main() {
@@ -178,8 +149,6 @@ func main() {
 		fmt.Printf("Invalid RunTime value: %v\n", err)
 		return
 	}
-
-	fmt.Printf("Starting with TPS: %d, RunTime: %d seconds\n", InputTPS, runTime)
 
 	txs, err := readEncodedTxs(encodedTxDir)
 	if err != nil {
@@ -221,10 +190,6 @@ func main() {
 		elapsed := time.Since(startTime).Milliseconds()
 		if elapsed < 1000 {
 			time.Sleep(time.Duration(1000-elapsed) * time.Millisecond)
-		}
-
-		if sentTxs >= numTxs {
-			break
 		}
 	}
 
