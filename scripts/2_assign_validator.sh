@@ -1,37 +1,28 @@
 #!/bin/bash
-source ./env.sh
+
+# Load environment variables relative to the script's location
+SCRIPT_DIR=$(dirname "$0")
+source "$SCRIPT_DIR/env.sh"
 
 # First, create accounts and add them to genesis
-for ((i = 0; i < $NODE_COUNT; i++))
-do            
+for ((i = 0; i < $NODE_COUNT; i++)); do
     CURRENT_DATA_DIR=$NODE_ROOT_DIR/node$i
     ACCOUNT_NAME=$ACCOUNT_NAME_PREFIX$i
 
     cp -f $CURRENT_DATA_DIR/config/sample_genesis.json $CURRENT_DATA_DIR/config/genesis.json
 
-#    echo "$BINARY keys add $ACCOUNT_NAME --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR"
+    # Add keys and genesis accounts
     $BINARY keys add $ACCOUNT_NAME --keyring-backend $KEYRING_BACKEND --home $CURRENT_DATA_DIR
-
     ACCOUNT_ADDRESS=$($BINARY keys show $ACCOUNT_NAME -a --home $CURRENT_DATA_DIR --keyring-backend $KEYRING_BACKEND)
-#    echo "1. || $ACCOUNT_ADDRESS"
-
-#    echo "2. || $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR"
     $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $CURRENT_DATA_DIR
 
-#    echo "3 || CURRENT_DATA_DIR: $CURRENT_DATA_DIR || GENESIS_DIR: $GENESIS_DIR"
-    if [ $CURRENT_DATA_DIR = $GENESIS_DIR ]; then
-        continue
+    if [ "$CURRENT_DATA_DIR" != "$GENESIS_DIR" ]; then
+        $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR
     fi
-
-#    echo "4 || $BINARY axelard add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR"
-    $BINARY add-genesis-account $ACCOUNT_ADDRESS 9990004452404000000000$UNIT --home $GENESIS_DIR
-   
-    # echo $NUMBER
 done
-    
+
 # Then create gentx for each validator
-for ((i = 0; i < $NODE_COUNT; i++))
-do
+for ((i = 0; i < $NODE_COUNT; i++)); do
     CURRENT_DATA_DIR=$NODE_ROOT_DIR/node$i
     ACCOUNT_NAME=$ACCOUNT_NAME_PREFIX$i
 
@@ -46,5 +37,4 @@ done
 cp -f $GENESIS_DIR/config/genesis.json $GENESIS_DIR/config/validator_genesis.json
 
 echo "## Assign validator done and insert into genesis.json of node0 ##"
-
 echo "### 2_assign_validator.sh done"
