@@ -27,3 +27,12 @@ initialize-env:
 generate-transactions:
 	@echo "Generating transactions..."
 	bash $(SCRIPTS_DIR)/4_generate_transactions.sh
+
+.PHONY: run
+
+run:
+	@echo "Starting all nodes..."
+	@for i in 0 1 2 3; do \
+		bash scripts/92_run.sh $$i & \
+	done
+	@wait

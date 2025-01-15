@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Load environment variables
-source ./env.sh
-source ./run_env.sh
+SCRIPT_DIR=$(dirname "$0")
+source "$SCRIPT_DIR/env.sh"
+source "$SCRIPT_DIR/run_env.sh"
 
 # Get node index from the first argument
 INDEX=$1
