@@ -9,20 +9,14 @@ import (
 	"strconv"
 )
 
-// TxLog represents a transaction log entry.
+// TxLog represents a transaction log entry
 type TxLog struct {
 	TxIdx     int
 	Timestamp int64
 	Height    int
 }
 
-// BlockLog represents a block log entry.
-type BlockLog struct {
-	Timestamp int64
-	Height    int
-}
-
-// parseTxLogs parses the tx_log.txt file to extract transaction logs.
+// parseTxLogs reads tx_log.txt and extracts transaction information
 func parseTxLogs(filePath string) ([]TxLog, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -32,8 +26,8 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 
 	var txLogs []TxLog
 	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+timestamp:\s+(\d+)\s+height:\s+(\d+)`)
-
 	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		matches := txLogRegex.FindStringSubmatch(line)
@@ -52,15 +46,15 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 	return txLogs, nil
 }
 
-// parseBlockLogs parses the block log files to extract block logs.
+// parseBlockLogs reads output*.log files and extracts block information
 func parseBlockLogs(logDir string) (map[int]int64, error) {
 	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
-	if err != nil {
+	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("failed to find block log files: %v", err)
 	}
 
 	blockLogs := make(map[int]int64)
-	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*height=(\d+)`)
+	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*height=(\d+).*`)
 
 	for _, file := range files {
 		f, err := os.Open(file)
@@ -72,7 +66,7 @@ func parseBlockLogs(logDir string) (map[int]int64, error) {
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			line := scanner.Text()
-			// Remove color codes
+			// Remove color codes if any
 			colorCodeRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 			cleanedLine := colorCodeRegex.ReplaceAllString(line, "")
 
@@ -92,7 +86,7 @@ func parseBlockLogs(logDir string) (map[int]int64, error) {
 	return blockLogs, nil
 }
 
-// calculateLatency calculates latency for each transaction and writes it to latency.txt.
+// calculateLatency computes the latency for each transaction and writes to output file
 func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string) error {
 	file, err := os.Create(outputFile)
 	if err != nil {
@@ -111,6 +105,8 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 		}
 
 		latency := blockTimestamp - tx.Timestamp
+		fmt.Printf("Tx %d: Timestamp = %d, Block Timestamp = %d, Latency = %d ms\n",
+			tx.TxIdx, tx.Timestamp, blockTimestamp, latency)
 		fmt.Fprintf(writer, "TxIdx: %d, Timestamp: %d, Height: %d, Latency: %d ms\n", tx.TxIdx, tx.Timestamp, tx.Height, latency)
 	}
 
@@ -120,12 +116,12 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 func main() {
 	txLogFile := "tx_log.txt"
 	logDir := "./"
-	latencyFile := "latency.txt"
+	outputFile := "latency.txt"
 
 	// Parse transaction logs
 	txLogs, err := parseTxLogs(txLogFile)
 	if err != nil {
-		fmt.Printf("Failed to parse transaction logs: %v\n", err)
+		fmt.Printf("Failed to parse tx logs: %v\n", err)
 		return
 	}
 
@@ -136,11 +132,8 @@ func main() {
 		return
 	}
 
-	// Calculate and write latency
-	if err := calculateLatency(txLogs, blockLogs, latencyFile); err != nil {
+	// Calculate latency and write to file
+	if err := calculateLatency(txLogs, blockLogs, outputFile); err != nil {
 		fmt.Printf("Failed to calculate latency: %v\n", err)
-		return
 	}
-
-	fmt.Printf("Latency calculated and written to %s\n", latencyFile)
 }
