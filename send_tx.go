@@ -53,6 +53,53 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
+func queryHeight(txHash string, host string, port string) (int, error) {
+	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("non-200 response: %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var queryResp struct {
+		TxResponse struct {
+			Height string `json:"height"`
+		} `json:"tx_response"`
+	}
+	if err := json.Unmarshal(body, &queryResp); err != nil {
+		return 0, fmt.Errorf("failed to parse response JSON: %v", err)
+	}
+
+	height, err := strconv.Atoi(queryResp.TxResponse.Height)
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert height to int: %v", err)
+	}
+
+	return height, nil
+}
+
+func appendHeightToLog(logEntries *[]LogEntry) {
+	for i, log := range *logEntries {
+		height, err := queryHeight(log.TxHash, HOSTS[0], REST_PORTS[0])
+		if err != nil {
+			fmt.Printf("[TxIdx %d] Failed to query height for txHash %s: %v\n", log.TxIdx, log.TxHash, err)
+			continue
+		}
+		(*logEntries)[i].Height = height
+		fmt.Printf("[TxIdx %d] Updated height: %d\n", log.TxIdx, height)
+	}
+}
+
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logEntries *[]LogEntry) {
 	defer wg.Done()
 
@@ -183,7 +230,11 @@ func main() {
 		fmt.Printf("[INFO] Completed %d/%d transactions for iteration %d\n", sentTxs, numTxs, i+1)
 	}
 
-	// 15초 대기
+	// Update heights in logEntries
+	fmt.Println("[INFO] Updating transaction heights...")
+	appendHeightToLog(&logEntries)
+
+	// 15-second delay before writing log
 	fmt.Println("[INFO] Waiting 15 seconds before writing log file...")
 	time.Sleep(15 * time.Second)
 
