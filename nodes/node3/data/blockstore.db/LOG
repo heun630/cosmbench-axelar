@@ -1,0 +1,6 @@
+=============== Jan 15, 2025 (KST) ===============
+14:37:11.572930 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+14:37:11.585500 db@open opening
+14:37:11.585752 version@stat F·[] S·0B[] Sc·[]
+14:37:11.593536 db@janitor F·2 G·0
+14:37:11.593557 db@open done T·8.043798ms
