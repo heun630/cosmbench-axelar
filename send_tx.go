@@ -28,11 +28,6 @@ type TxData struct {
 	Mode    string `json:"mode"`
 }
 
-type TxResponse struct {
-	Height string `json:"height"`
-	TxHash string `json:"txhash"`
-}
-
 func readEncodedTxs(dir string) ([]string, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
