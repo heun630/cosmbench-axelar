@@ -16,6 +16,12 @@ type TxLog struct {
 	Height    int
 }
 
+// BlockLog represents a block log entry
+type BlockLog struct {
+	Timestamp int64
+	Height    int
+}
+
 // parseTxLogs reads tx_log.txt and extracts transaction information
 func parseTxLogs(filePath string) ([]TxLog, error) {
 	fmt.Println("[INFO] Parsing transaction logs...")
@@ -26,7 +32,7 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 	defer file.Close()
 
 	var txLogs []TxLog
-	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+timestamp:\s+(\d+)\s+height:\s+(\d+)`)
+	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+timestamp:\s+(\d+)\s+txHash:.*height:\s+(\d+)`)
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
@@ -57,7 +63,7 @@ func parseBlockLogs(logDir string) (map[int]int64, error) {
 	}
 
 	blockLogs := make(map[int]int64)
-	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*height=(\d+).*`)
+	blockLogRegex := regexp.MustCompile(`(\d+)\s+.*committed state.*height=(\d+).*`)
 
 	for _, file := range files {
 		fmt.Printf("[INFO] Processing block log file: %s\n", file)
