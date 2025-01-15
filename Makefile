@@ -30,10 +30,12 @@ generate-transactions:
 
 run:
 	@echo "Starting all nodes..."
-	@for i in 0 1 2 3; do \
+	@trap 'pkill -P $$' SIGINT; \
+	for i in 0 1 2 3; do \
 		bash scripts/92_run.sh $$i & \
-	done
-	@wait
+	done; \
+	wait
+
 
 send:
 	@echo "Sending transactions..."
