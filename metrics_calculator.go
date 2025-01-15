@@ -12,9 +12,10 @@ import (
 
 // TxLog represents a transaction log entry
 type TxLog struct {
-	TxIdx     int   `json:"txIdx"`
-	Timestamp int64 `json:"timestamp"`
-	Height    int   `json:"height"`
+	TxIdx     int    `json:"txIdx"`
+	Timestamp int64  `json:"timestamp"`
+	Height    int    `json:"height"`
+	TxHash    string `json:"txHash"`
 }
 
 // BlockLog represents a block log entry
@@ -47,22 +48,9 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 	defer file.Close()
 
 	var txLogs []TxLog
-	txLogRegex := regexp.MustCompile(`txIdx:\s+(\d+)\s+timestamp:\s+(\d+)\s+txHash:.*height:\s+(\d+)`)
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		matches := txLogRegex.FindStringSubmatch(line)
-		if len(matches) > 0 {
-			txIdx, _ := strconv.Atoi(matches[1])
-			timestamp, _ := strconv.ParseInt(matches[2], 10, 64)
-			height, _ := strconv.Atoi(matches[3])
-			txLogs = append(txLogs, TxLog{TxIdx: txIdx, Timestamp: timestamp, Height: height})
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read tx log file: %v", err)
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&txLogs); err != nil {
+		return nil, fmt.Errorf("failed to decode JSON tx log file: %v", err)
 	}
 
 	fmt.Printf("[INFO] Parsed %d transactions from %s\n", len(txLogs), filePath)
@@ -226,7 +214,7 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 }
 
 func main() {
-	txLogFile := "tx_log.txt"
+	txLogFile := "tx_log.json"
 	logDir := "./"
 	tpsFile := "tps.json"
 	blockTransactionFile := "block_transactions.json"
