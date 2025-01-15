@@ -35,6 +35,7 @@ for ((i = 0; i < $NODE_COUNT; i++)); do
             --chain-id $CHAIN_ID \
             --home $CURRENT_DATA_DIR \
             --keyring-backend test \
+            --gas 200000 \
             --generate-only > $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER
         echo "[INFO] Unsigned transaction created: $UNSIGNED_TX_ROOT_DIR/$UNSIGNED_TX_PREFIX$NUMBER"
 
