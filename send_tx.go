@@ -53,79 +53,6 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
-func queryHeight(txHash string, host string, port string) (int, error) {
-	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return 0, fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("non-200 response: %d", resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read response body: %v", err)
-	}
-
-	var queryResp struct {
-		TxResponse struct {
-			Height string `json:"height"`
-		} `json:"tx_response"`
-	}
-	if err := json.Unmarshal(body, &queryResp); err != nil {
-		return 0, fmt.Errorf("failed to parse response JSON: %v", err)
-	}
-
-	height, err := strconv.Atoi(queryResp.TxResponse.Height)
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert height to int: %v", err)
-	}
-
-	return height, nil
-}
-
-func appendHeightToLog(logFileName string) {
-	file, err := os.Open(logFileName)
-	if err != nil {
-		fmt.Printf("Error opening log file: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	var logs []LogEntry
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&logs); err != nil {
-		fmt.Printf("Error decoding log file: %v\n", err)
-		return
-	}
-
-	for i, log := range logs {
-		height, err := queryHeight(log.TxHash, HOSTS[0], REST_PORTS[0])
-		if err != nil {
-			fmt.Printf("[TxIdx %d] Failed to query height for txHash %s: %v\n", log.TxIdx, log.TxHash, err)
-			continue
-		}
-		logs[i].Height = height
-	}
-
-	logFile, err := os.Create(logFileName)
-	if err != nil {
-		fmt.Printf("Error creating updated log file: %v\n", err)
-		return
-	}
-	defer logFile.Close()
-
-	encoder := json.NewEncoder(logFile)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(logs); err != nil {
-		fmt.Printf("Error writing updated log file: %v\n", err)
-	}
-}
-
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logEntries *[]LogEntry) {
 	defer wg.Done()
 
@@ -190,6 +117,8 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		Timestamp: timestamp,
 		TxHash:    txHash,
 	})
+
+	fmt.Printf("[TxIdx %d] Transaction sent successfully. TxHash: %s\n", txIdx, txHash)
 }
 
 func main() {
@@ -250,6 +179,12 @@ func main() {
 		if elapsed < 1000 {
 			time.Sleep(time.Duration(1000-elapsed) * time.Millisecond)
 		}
+
+		// 추가 로그 출력
+		fmt.Printf("[INFO] Completed %d/%d transactions for iteration %d\n", sentTxs, numTxs, i+1)
+
+		// 15초 대기
+		time.Sleep(15 * time.Second)
 	}
 
 	logFile, err := os.Create(logFileName)
@@ -264,8 +199,6 @@ func main() {
 	if err := encoder.Encode(logEntries); err != nil {
 		fmt.Printf("Error writing log file: %v\n", err)
 	}
-
-	appendHeightToLog(logFileName)
 
 	fmt.Printf("All transactions sent (%d total). Logs updated with heights in %s\n", sentTxs, logFileName)
 }

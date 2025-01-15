@@ -59,7 +59,7 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 
 func parseBlockLogs(logDir string) (map[int]int64, error) {
 	fmt.Println("[INFO] Parsing block logs...")
-	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
+	files, err := filepath.Glob(filepath.Join(logDir, "logs/output*.log"))
 	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("failed to find block log files: %v", err)
 	}
