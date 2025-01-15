@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -46,36 +48,6 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
-func queryHeight(txHash string, host string, port string) (string, error) {
-	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("non-200 response: %d", resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
-	}
-
-	var queryResp struct {
-		TxResponse struct {
-			Height string `json:"height"`
-		} `json:"tx_response"`
-	}
-	if err := json.Unmarshal(body, &queryResp); err != nil {
-		return "", fmt.Errorf("failed to parse response JSON: %v", err)
-	}
-
-	return queryResp.TxResponse.Height, nil
-}
-
 func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
 	defer wg.Done()
 
@@ -109,8 +81,6 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 	}
 	defer resp.Body.Close()
 
-	timestamp := time.Now().UnixMilli()
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("[TxIdx %d] Failed to read response: %v\n", txIdx, err)
@@ -133,15 +103,70 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		return
 	}
 
-	height, err := queryHeight(txHash, host, port)
-	if err != nil {
-		fmt.Printf("[TxIdx %d] Failed to query height for txHash %s: %v\n", txIdx, txHash, err)
-		return
-	}
+	timestamp := time.Now().UnixMilli()
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d time: %d height: %s\n", txIdx, timestamp, height)
+	fmt.Fprintf(logFile, "%d %s\n", timestamp, txHash)
+}
+
+func queryHeightAndUpdateLog(logFileName string) error {
+	tempFile := logFileName + ".tmp"
+
+	inputFile, err := os.Open(logFileName)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %v", err)
+	}
+	defer inputFile.Close()
+
+	outputFile, err := os.Create(tempFile)
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer outputFile.Close()
+
+	scanner := bufio.NewScanner(inputFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, " ")
+		if len(parts) < 2 {
+			continue
+		}
+
+		timestamp := parts[0]
+		txHash := parts[1]
+		host := HOSTS[0]
+		port := REST_PORTS[0]
+
+		url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
+		resp, err := http.Get(url)
+		var height string
+
+		if err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			body, _ := ioutil.ReadAll(resp.Body)
+			var queryResp struct {
+				TxResponse struct {
+					Height string `json:"height"`
+				} `json:"tx_response"`
+			}
+			if json.Unmarshal(body, &queryResp) == nil {
+				height = queryResp.TxResponse.Height
+			}
+		}
+
+		if height == "" {
+			height = "unknown"
+		}
+
+		fmt.Fprintf(outputFile, "%s %s %s\n", timestamp, txHash, height)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("failed to read log file: %v", err)
+	}
+
+	return os.Rename(tempFile, logFileName)
 }
 
 func main() {
@@ -207,4 +232,11 @@ func main() {
 	}
 
 	fmt.Printf("All transactions sent (%d total). Logs saved to tx_log.txt\n", sentTxs)
+
+	// Update the log file with heights
+	if err := queryHeightAndUpdateLog("tx_log.txt"); err != nil {
+		fmt.Printf("Failed to update log file with heights: %v\n", err)
+	} else {
+		fmt.Println("Log file updated with heights.")
+	}
 }
