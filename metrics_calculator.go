@@ -214,11 +214,14 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 }
 
 func main() {
-	txLogFile := "tx_log.json"
+	txLogFile := "results/tx_log.json"
 	logDir := "./"
-	tpsFile := "tps.json"
-	blockTransactionFile := "block_transactions.json"
-	latencyFile := "latency.json"
+	resultDir := "results/"
+	os.MkdirAll(resultDir, os.ModePerm)
+
+	tpsFile := filepath.Join(resultDir, "tps.json")
+	blockTransactionFile := filepath.Join(resultDir, "block_transactions.json")
+	latencyFile := filepath.Join(resultDir, "latency.json")
 
 	fmt.Println("[INFO] Starting latency calculation tool...")
 

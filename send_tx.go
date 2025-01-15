@@ -219,7 +219,10 @@ func main() {
 
 	fmt.Printf("Loaded %d transactions\n", numTxs)
 
-	logFileName := "tx_log.json"
+	resultDir := "results/"
+	os.MkdirAll(resultDir, os.ModePerm)
+	logFileName := filepath.Join(resultDir, "tx_log.json")
+
 	var fileMutex sync.Mutex
 	var wg sync.WaitGroup
 	var logEntries []LogEntry
