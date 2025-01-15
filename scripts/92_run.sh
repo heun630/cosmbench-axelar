@@ -7,7 +7,13 @@ source ./run_env.sh
 # Get node index from the first argument
 INDEX=$1
 CURRENT_DATA_DIR=$TESTDIR/node$INDEX
-LOG_FILE="output$INDEX.log"
+
+# Set log directory and log file
+LOG_DIR="logs"
+LOG_FILE="$LOG_DIR/output$INDEX.log"
+
+# Create logs directory if it does not exist
+mkdir -p "$LOG_DIR"
 
 # Print the command that will be run (for debugging purposes)
 echo "$BINARY start --home $CURRENT_DATA_DIR"
