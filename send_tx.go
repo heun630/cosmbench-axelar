@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -28,6 +26,13 @@ var (
 type TxData struct {
 	TxBytes string `json:"tx_bytes"`
 	Mode    string `json:"mode"`
+}
+
+type LogEntry struct {
+	TxIdx     int    `json:"txIdx"`
+	Timestamp int64  `json:"timestamp"`
+	TxHash    string `json:"txHash"`
+	Height    string `json:"height,omitempty"`
 }
 
 func readEncodedTxs(dir string) ([]string, error) {
@@ -86,45 +91,37 @@ func appendHeightToLog(logFileName string) {
 	}
 	defer file.Close()
 
-	var updatedLines []string
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, " ")
-		if len(parts) < 4 {
-			fmt.Printf("Invalid log line: %s\n", line)
-			continue
-		}
-
-		txIdx := parts[1]
-		timestamp := parts[3]
-		txHash := parts[5]
-		host := HOSTS[0]
-		port := REST_PORTS[0]
-
-		height, err := queryHeight(txHash, host, port)
-		if err != nil {
-			fmt.Printf("[TxIdx %s] Failed to query height for txHash %s: %v\n", txIdx, txHash, err)
-			continue
-		}
-
-		updatedLine := fmt.Sprintf("txIdx: %s timestamp: %s txHash: %s height: %s", txIdx, timestamp, txHash, height)
-		updatedLines = append(updatedLines, updatedLine)
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error reading log file: %v\n", err)
+	var logs []LogEntry
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&logs); err != nil {
+		fmt.Printf("Error decoding log file: %v\n", err)
 		return
 	}
 
-	// Write updated log back to file
-	if err := os.WriteFile(logFileName, []byte(strings.Join(updatedLines, "\n")), 0644); err != nil {
+	for i, log := range logs {
+		height, err := queryHeight(log.TxHash, HOSTS[0], REST_PORTS[0])
+		if err != nil {
+			fmt.Printf("[TxIdx %d] Failed to query height for txHash %s: %v\n", log.TxIdx, log.TxHash, err)
+			continue
+		}
+		logs[i].Height = height
+	}
+
+	logFile, err := os.Create(logFileName)
+	if err != nil {
+		fmt.Printf("Error creating updated log file: %v\n", err)
+		return
+	}
+	defer logFile.Close()
+
+	encoder := json.NewEncoder(logFile)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(logs); err != nil {
 		fmt.Printf("Error writing updated log file: %v\n", err)
 	}
 }
 
-func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logFile *os.File) {
+func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logEntries *[]LogEntry) {
 	defer wg.Done()
 
 	host := HOSTS[txIdx%len(HOSTS)]
@@ -183,7 +180,11 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	fmt.Fprintf(logFile, "txIdx: %d timestamp: %d txHash: %s\n", txIdx, timestamp, txHash)
+	*logEntries = append(*logEntries, LogEntry{
+		TxIdx:     txIdx,
+		Timestamp: timestamp,
+		TxHash:    txHash,
+	})
 }
 
 func main() {
@@ -213,15 +214,10 @@ func main() {
 
 	fmt.Printf("Loaded %d transactions\n", numTxs)
 
-	logFile, err := os.Create("tx_log.txt")
-	if err != nil {
-		fmt.Printf("Error creating log file: %v\n", err)
-		return
-	}
-	defer logFile.Close()
-
+	logFileName := "tx_log.json"
 	var fileMutex sync.Mutex
 	var wg sync.WaitGroup
+	var logEntries []LogEntry
 
 	sentTxs := 0
 
@@ -236,7 +232,7 @@ func main() {
 
 		for j := 0; j < txsToSend; j++ {
 			wg.Add(1)
-			go sendTransaction(sentTxs+j, txs[sentTxs+j], &wg, &fileMutex, logFile)
+			go sendTransaction(sentTxs+j, txs[sentTxs+j], &wg, &fileMutex, &logEntries)
 		}
 
 		wg.Wait()
@@ -248,7 +244,20 @@ func main() {
 		}
 	}
 
-	appendHeightToLog("tx_log.txt")
+	logFile, err := os.Create(logFileName)
+	if err != nil {
+		fmt.Printf("Error creating log file: %v\n", err)
+		return
+	}
+	defer logFile.Close()
 
-	fmt.Printf("All transactions sent (%d total). Logs updated with heights in tx_log.txt\n", sentTxs)
+	encoder := json.NewEncoder(logFile)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(logEntries); err != nil {
+		fmt.Printf("Error writing log file: %v\n", err)
+	}
+
+	appendHeightToLog(logFileName)
+
+	fmt.Printf("All transactions sent (%d total). Logs updated with heights in %s\n", sentTxs, logFileName)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,18 +12,32 @@ import (
 
 // TxLog represents a transaction log entry
 type TxLog struct {
-	TxIdx     int
-	Timestamp int64
-	Height    int
+	TxIdx     int   `json:"txIdx"`
+	Timestamp int64 `json:"timestamp"`
+	Height    int   `json:"height"`
 }
 
 // BlockLog represents a block log entry
 type BlockLog struct {
-	Timestamp int64
-	Height    int
+	Timestamp int64 `json:"timestamp"`
+	Height    int   `json:"height"`
 }
 
-// parseTxLogs reads tx_log.txt and extracts transaction information
+// TPSData represents TPS-related information
+type TPSData struct {
+	TotalTxs         int     `json:"totalTxs"`
+	FirstTxTimestamp int64   `json:"firstTxTimestamp"`
+	LastTxTimestamp  int64   `json:"lastTxTimestamp"`
+	TotalElapsedTime int64   `json:"totalElapsedTime"`
+	TPS              float64 `json:"tps"`
+}
+
+// BlockTransactionCount represents block-wise transaction count
+type BlockTransactionCount struct {
+	Height           int `json:"height"`
+	TransactionCount int `json:"transactionCount"`
+}
+
 func parseTxLogs(filePath string) ([]TxLog, error) {
 	fmt.Println("[INFO] Parsing transaction logs...")
 	file, err := os.Open(filePath)
@@ -54,7 +69,6 @@ func parseTxLogs(filePath string) ([]TxLog, error) {
 	return txLogs, nil
 }
 
-// parseBlockLogs reads output*.log files and extracts block information
 func parseBlockLogs(logDir string) (map[int]int64, error) {
 	fmt.Println("[INFO] Parsing block logs...")
 	files, err := filepath.Glob(filepath.Join(logDir, "output*.log"))
@@ -97,7 +111,73 @@ func parseBlockLogs(logDir string) (map[int]int64, error) {
 	return blockLogs, nil
 }
 
-// calculateLatency computes the latency for each transaction and writes to output file
+func calculateTPS(txLogs []TxLog, outputFile string) error {
+	fmt.Println("[INFO] Calculating TPS...")
+	if len(txLogs) == 0 {
+		return fmt.Errorf("no transactions found")
+	}
+
+	firstTxTimestamp := txLogs[0].Timestamp
+	lastTxTimestamp := txLogs[len(txLogs)-1].Timestamp
+	totalElapsedTime := lastTxTimestamp - firstTxTimestamp
+	tps := float64(len(txLogs)) / (float64(totalElapsedTime) / 1000.0)
+
+	tpsData := TPSData{
+		TotalTxs:         len(txLogs),
+		FirstTxTimestamp: firstTxTimestamp,
+		LastTxTimestamp:  lastTxTimestamp,
+		TotalElapsedTime: totalElapsedTime,
+		TPS:              tps,
+	}
+
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return fmt.Errorf("failed to create TPS file: %v", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(tpsData); err != nil {
+		return fmt.Errorf("failed to write TPS file: %v", err)
+	}
+
+	fmt.Printf("[INFO] TPS calculation completed. Results saved to %s\n", outputFile)
+	return nil
+}
+
+func calculateBlockTransactionCounts(txLogs []TxLog, outputFile string) error {
+	fmt.Println("[INFO] Calculating block transaction counts...")
+	blockCounts := make(map[int]int)
+
+	for _, tx := range txLogs {
+		blockCounts[tx.Height]++
+	}
+
+	var results []BlockTransactionCount
+	for height, count := range blockCounts {
+		results = append(results, BlockTransactionCount{
+			Height:           height,
+			TransactionCount: count,
+		})
+	}
+
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return fmt.Errorf("failed to create block transaction count file: %v", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(results); err != nil {
+		return fmt.Errorf("failed to write block transaction count file: %v", err)
+	}
+
+	fmt.Printf("[INFO] Block transaction counts calculation completed. Results saved to %s\n", outputFile)
+	return nil
+}
+
 func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string) error {
 	fmt.Println("[INFO] Calculating latency...")
 	file, err := os.Create(outputFile)
@@ -106,8 +186,12 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 	}
 	defer file.Close()
 
-	writer := bufio.NewWriter(file)
-	defer writer.Flush()
+	var results []struct {
+		TxIdx     int   `json:"txIdx"`
+		Timestamp int64 `json:"timestamp"`
+		Height    int   `json:"height"`
+		Latency   int64 `json:"latency"`
+	}
 
 	for _, tx := range txLogs {
 		blockTimestamp, exists := blockLogs[tx.Height]
@@ -118,7 +202,23 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 
 		latency := blockTimestamp - tx.Timestamp
 		fmt.Printf("[INFO] TxIdx: %d, Latency: %d ms\n", tx.TxIdx, latency)
-		fmt.Fprintf(writer, "TxIdx: %d, Timestamp: %d, Height: %d, Latency: %d ms\n", tx.TxIdx, tx.Timestamp, tx.Height, latency)
+		results = append(results, struct {
+			TxIdx     int   `json:"txIdx"`
+			Timestamp int64 `json:"timestamp"`
+			Height    int   `json:"height"`
+			Latency   int64 `json:"latency"`
+		}{
+			TxIdx:     tx.TxIdx,
+			Timestamp: tx.Timestamp,
+			Height:    tx.Height,
+			Latency:   latency,
+		})
+	}
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(results); err != nil {
+		return fmt.Errorf("failed to write latency file: %v", err)
 	}
 
 	fmt.Printf("[INFO] Latency calculation completed. Results saved to %s\n", outputFile)
@@ -128,7 +228,9 @@ func calculateLatency(txLogs []TxLog, blockLogs map[int]int64, outputFile string
 func main() {
 	txLogFile := "tx_log.txt"
 	logDir := "./"
-	outputFile := "latency.txt"
+	tpsFile := "tps.json"
+	blockTransactionFile := "block_transactions.json"
+	latencyFile := "latency.json"
 
 	fmt.Println("[INFO] Starting latency calculation tool...")
 
@@ -146,11 +248,23 @@ func main() {
 		return
 	}
 
-	// Calculate latency and write to file
-	if err := calculateLatency(txLogs, blockLogs, outputFile); err != nil {
+	// Calculate latency and write to JSON file
+	if err := calculateLatency(txLogs, blockLogs, latencyFile); err != nil {
 		fmt.Printf("[ERROR] Failed to calculate latency: %v\n", err)
 		return
 	}
 
-	fmt.Println("[INFO] Latency calculation completed successfully.")
+	// Calculate TPS and write to JSON file
+	if err := calculateTPS(txLogs, tpsFile); err != nil {
+		fmt.Printf("[ERROR] Failed to calculate TPS: %v\n", err)
+		return
+	}
+
+	// Calculate block transaction counts and write to JSON file
+	if err := calculateBlockTransactionCounts(txLogs, blockTransactionFile); err != nil {
+		fmt.Printf("[ERROR] Failed to calculate block transaction counts: %v\n", err)
+		return
+	}
+
+	fmt.Println("[INFO] All calculations completed successfully.")
 }
