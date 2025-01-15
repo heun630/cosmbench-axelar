@@ -36,8 +36,8 @@ run:
 	wait
 
 send:
-	@echo "Sending transactions with TPS=$(TPS) and RunTime=$(RunTime)..."
-	@go run send_tx.go $(TPS) $(RunTime)
+	@echo "Sending transactions with TPS=$(firstword $(ARGS)) and RunTime=$(word 2, $(ARGS))..."
+	@go run send_tx.go $(ARGS)
 
 restart:
 	@echo "Restarting environment and nodes..."
