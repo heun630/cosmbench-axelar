@@ -29,14 +29,20 @@ func parseBlockLogs(logFiles []string) ([]BlockInfo, error) {
 			line := scanner.Text()
 			matches := blockRegex.FindStringSubmatch(line)
 			if matches != nil {
-				timestamp, _ := strconv.ParseInt(matches[1], 10, 64)
-				height, _ := strconv.ParseInt(matches[2], 10, 64)
+				timestamp, err := strconv.ParseInt(matches[1], 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse timestamp in log file %s: %v", logFile, err)
+				}
+				height, err := strconv.ParseInt(matches[2], 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse height in log file %s: %v", logFile, err)
+				}
 				blocks = append(blocks, BlockInfo{Height: height, Timestamp: timestamp})
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("failed to read log file %s: %v", logFile, err)
+			return nil, fmt.Errorf("failed to scan log file %s: %v", logFile, err)
 		}
 	}
 	return blocks, nil
@@ -49,7 +55,7 @@ func calculateLatency(txLog string, blockInfo []BlockInfo) (map[int64][]int64, e
 	}
 	defer file.Close()
 
-	latencyMap := make(map[int64][]int64) // Map of block height to latencies
+	latencyMap := make(map[int64][]int64)
 	txRegex := regexp.MustCompile(`txIdx: \d+ timestamp: (\d+) hash: .* height: (\d+)`)
 
 	scanner := bufio.NewScanner(file)
@@ -57,8 +63,14 @@ func calculateLatency(txLog string, blockInfo []BlockInfo) (map[int64][]int64, e
 		line := scanner.Text()
 		matches := txRegex.FindStringSubmatch(line)
 		if matches != nil {
-			txTimestamp, _ := strconv.ParseInt(matches[1], 10, 64)
-			txHeight, _ := strconv.ParseInt(matches[2], 10, 64)
+			txTimestamp, err := strconv.ParseInt(matches[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse tx timestamp: %v", err)
+			}
+			txHeight, err := strconv.ParseInt(matches[2], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse tx height: %v", err)
+			}
 
 			for _, block := range blockInfo {
 				if block.Height == txHeight {
@@ -71,7 +83,7 @@ func calculateLatency(txLog string, blockInfo []BlockInfo) (map[int64][]int64, e
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read tx log: %v", err)
+		return nil, fmt.Errorf("failed to scan tx log: %v", err)
 	}
 
 	return latencyMap, nil
