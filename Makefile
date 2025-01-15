@@ -47,3 +47,9 @@ restart:
 calculate:
 	@echo "Calculating metrics..."
 	@go run metrics_calculator.go
+
+.PHONY: stop
+
+stop:
+	@echo "Stopping all nodes..."
+	@pkill -f "bash scripts/92_run.sh" || echo "No nodes running."
