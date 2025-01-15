@@ -35,7 +35,6 @@ run:
 	done; \
 	wait
 
-
 send:
 	@echo "Sending transactions..."
 	@go run send_tx.go $(ARGS)
