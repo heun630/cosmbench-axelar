@@ -9,7 +9,7 @@ MONIKER="cosmbench"
 KEYRING_BACKEND="test" # Select keyring's backend (os|file|test) (default "os")
 
 NODE_COUNT=4 #노드 수
-ACCOUNT_COUNT_PER_LOOP=50 #노드 당 생성할 어카운트 수
+ACCOUNT_COUNT_PER_LOOP=30 #노드 당 생성할 어카운트 수
 #즉, 총 어카운트 수 = NODE_COUNT * ACCOUNT_COUNT_PER_LOOP
 
 UNIT="uaxl" ##전송 코인 이름
