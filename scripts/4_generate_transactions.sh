@@ -16,10 +16,10 @@ mkdir -p $ENCODED_TX_ROOT_DIR
 
 # Generate transactions
 echo "[INFO] Starting transaction generation..."
-for ((i=0; i<$NODE_COUNT; i++)); do
+for ((i = 0; i < $NODE_COUNT; i++)); do
     CURRENT_DATA_DIR=$NODE_ROOT_DIR/node$i
     echo "[INFO] Processing node $i at $CURRENT_DATA_DIR"
-    for ((j=0; j<$ACCOUNT_COUNT_PER_LOOP; j++)); do
+    for ((j = 0; j < $ACCOUNT_COUNT_PER_LOOP; j++)); do
         NUMBER=$((i * $ACCOUNT_COUNT_PER_LOOP + j))
         ACCOUNT_NUMBER=$((NUMBER + 4))  # Adjust for validators
         ACCOUNT_NAME=${ACCOUNT_NAME_PREFIX}${NUMBER}
