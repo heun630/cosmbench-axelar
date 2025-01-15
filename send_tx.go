@@ -180,12 +180,12 @@ func main() {
 			time.Sleep(time.Duration(1000-elapsed) * time.Millisecond)
 		}
 
-		// 추가 로그 출력
 		fmt.Printf("[INFO] Completed %d/%d transactions for iteration %d\n", sentTxs, numTxs, i+1)
-
-		// 15초 대기
-		time.Sleep(15 * time.Second)
 	}
+
+	// 15초 대기
+	fmt.Println("[INFO] Waiting 15 seconds before writing log file...")
+	time.Sleep(15 * time.Second)
 
 	logFile, err := os.Create(logFileName)
 	if err != nil {
