@@ -230,14 +230,15 @@ func main() {
 		fmt.Printf("[INFO] Completed %d/%d transactions for iteration %d\n", sentTxs, numTxs, i+1)
 	}
 
+	// Add delay before height update
+	fmt.Println("[INFO] Waiting 15 seconds before updating transaction heights...")
+	time.Sleep(15 * time.Second)
+
 	// Update heights in logEntries
 	fmt.Println("[INFO] Updating transaction heights...")
 	appendHeightToLog(&logEntries)
 
-	// 15-second delay before writing log
-	fmt.Println("[INFO] Waiting 15 seconds before writing log file...")
-	time.Sleep(15 * time.Second)
-
+	// Save log entries to file
 	logFile, err := os.Create(logFileName)
 	if err != nil {
 		fmt.Printf("Error creating log file: %v\n", err)
