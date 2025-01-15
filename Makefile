@@ -3,7 +3,7 @@
 # Variables
 SCRIPTS_DIR=scripts
 
-.PHONY: init init-nodes assign-validators create-accounts initialize-env generate-transactions
+.PHONY: init init-nodes assign-validators create-accounts initialize-env generate-transactions run send restart calculate
 
 init: init-nodes assign-validators create-accounts initialize-env generate-transactions
 	@echo "Initialization complete."
@@ -28,11 +28,22 @@ generate-transactions:
 	@echo "Generating transactions..."
 	bash $(SCRIPTS_DIR)/4_generate_transactions.sh
 
-.PHONY: run
-
 run:
 	@echo "Starting all nodes..."
 	@for i in 0 1 2 3; do \
 		bash scripts/92_run.sh $$i & \
 	done
 	@wait
+
+send:
+	@echo "Sending transactions..."
+	@go run send_tx.go $(ARGS)
+
+restart:
+	@echo "Restarting environment and nodes..."
+	make initialize-env
+	make run
+
+calculate:
+	@echo "Calculating metrics..."
+	@go run metrics_calculator.go
