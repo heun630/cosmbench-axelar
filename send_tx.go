@@ -32,7 +32,7 @@ type LogEntry struct {
 	TxIdx     int    `json:"txIdx"`
 	Timestamp int64  `json:"timestamp"`
 	TxHash    string `json:"txHash"`
-	Height    string `json:"height,omitempty"`
+	Height    int    `json:"height,omitempty"`
 }
 
 func readEncodedTxs(dir string) ([]string, error) {
@@ -53,22 +53,22 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
-func queryHeight(txHash string, host string, port string) (string, error) {
+func queryHeight(txHash string, host string, port string) (int, error) {
 	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
+		return 0, fmt.Errorf("failed to query height for txHash %s: %v", txHash, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("non-200 response: %d", resp.StatusCode)
+		return 0, fmt.Errorf("non-200 response: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
+		return 0, fmt.Errorf("failed to read response body: %v", err)
 	}
 
 	var queryResp struct {
@@ -77,10 +77,15 @@ func queryHeight(txHash string, host string, port string) (string, error) {
 		} `json:"tx_response"`
 	}
 	if err := json.Unmarshal(body, &queryResp); err != nil {
-		return "", fmt.Errorf("failed to parse response JSON: %v", err)
+		return 0, fmt.Errorf("failed to parse response JSON: %v", err)
 	}
 
-	return queryResp.TxResponse.Height, nil
+	height, err := strconv.Atoi(queryResp.TxResponse.Height)
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert height to int: %v", err)
+	}
+
+	return height, nil
 }
 
 func appendHeightToLog(logFileName string) {
