@@ -50,7 +50,7 @@ calculate:
 
 update-height:
 	@echo "Updating transaction heights in the log..."
-	@go run update_height.go
+	@go run update_height.go types.go
 
 stop:
 	@echo "Stopping all nodes..."
