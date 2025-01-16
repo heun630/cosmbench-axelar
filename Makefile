@@ -1,9 +1,9 @@
-# Makefile for initializing nodes and validators
+# Makefile for initializing nodes, validators, and updating transaction heights
 
 # Variables
 SCRIPTS_DIR=scripts
 
-.PHONY: init init-nodes assign-validators create-accounts initialize-env generate-transactions run send restart calculate
+.PHONY: init init-nodes assign-validators create-accounts initialize-env generate-transactions run send restart calculate update stop
 
 init: init-nodes assign-validators create-accounts initialize-env generate-transactions
 	@echo "Initialization complete."
@@ -48,7 +48,9 @@ calculate:
 	@echo "Calculating metrics..."
 	@go run metrics_calculator.go
 
-.PHONY: stop
+update-height:
+	@echo "Updating transaction heights in the log..."
+	@go run update_height.go
 
 stop:
 	@echo "Stopping all nodes..."
