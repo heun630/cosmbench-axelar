@@ -37,7 +37,7 @@ run:
 
 send:
 	@echo "Sending transactions with TPS=$(firstword $(ARGS)) and RunTime=$(word 2, $(ARGS))..."
-	@go run send_tx.go $(ARGS)
+	@go run send_tx.go types.go $(ARGS)
 
 restart:
 	@echo "Restarting environment and nodes..."
