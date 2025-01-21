@@ -9,6 +9,13 @@ import (
 	"strconv"
 )
 
+type LogEntry struct {
+	TxIdx     int    `json:"txIdx"`
+	Timestamp int64  `json:"timestamp"`
+	TxHash    string `json:"txHash"`
+	Height    int    `json:"height,omitempty"`
+}
+
 func queryHeight(txHash string, host string, port string) (int, error) {
 	url := fmt.Sprintf("http://%s:%s/cosmos/tx/v1beta1/txs/%s", host, port, txHash)
 
