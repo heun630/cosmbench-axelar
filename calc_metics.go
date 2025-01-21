@@ -103,47 +103,61 @@ func parseBlockLogs(logDir string) (map[int]int64, error) {
 
 func calculateTPS(txLogs []TxLog, outputFile string) error {
 	fmt.Println("[INFO] Calculating TPS...")
+
+	// Check if txLogs is empty
 	if len(txLogs) == 0 {
-		return fmt.Errorf("no transactions found")
+		return fmt.Errorf("[ERROR] No transactions found in txLogs")
 	}
 
+	// Extract the first transaction timestamp
 	firstTxTimestamp := txLogs[0].Timestamp
+
+	// Get the height of the last transaction
 	lastTxHeight := txLogs[len(txLogs)-1].Height
-	////
+
+	// Open the log file to find the last transaction's timestamp
 	file, err := os.Open("logs/output0.log")
 	if err != nil {
-		fmt.Println("파일을 열 수 없습니다:", err)
+		fmt.Printf("[ERROR] Unable to open log file: %v\n", err)
 		return err
 	}
 	defer file.Close()
-	scanner := bufio.NewScanner(file)
 
-	words := []string{}
-	// 파일을 한 줄씩 읽기
+	scanner := bufio.NewScanner(file)
+	var lastTxTimestamp int64
+	found := false
+
+	// Scan through the log file to find the matching height
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// height=1254가 포함된 라인 찾기
+		// Look for the line containing the specific height
 		if strings.Contains(line, "height="+strconv.Itoa(lastTxHeight)) {
-			// 라인의 첫 단어 추출
-			words = strings.Fields(line)
+			words := strings.Fields(line)
 			if len(words) > 0 {
-				fmt.Println("첫 번째 단어:", words[0]) //words[0] = committed state timestamp
-			} else {
-				fmt.Println("빈 라인입니다.")
+				lastTxTimestamp, err = strconv.ParseInt(words[0], 10, 64)
+				if err != nil {
+					return fmt.Errorf("[ERROR] Failed to parse timestamp: %v", err)
+				}
+				found = true
 			}
 			break
 		}
 	}
-	lastTxTimestamp, err := strconv.ParseInt(words[0], 10, 64)
-	if err != nil {
-		return err
+
+	if !found {
+		return fmt.Errorf("[ERROR] Last transaction timestamp not found for height %d", lastTxHeight)
 	}
 
-	/////
+	// Calculate TPS
 	totalElapsedTime := lastTxTimestamp - firstTxTimestamp
+	if totalElapsedTime <= 0 {
+		return fmt.Errorf("[ERROR] Invalid elapsed time: %d", totalElapsedTime)
+	}
+
 	tps := float64(len(txLogs)) / (float64(totalElapsedTime) / 1000.0)
 
+	// Create TPS data
 	tpsData := TPSData{
 		TotalTxs:         len(txLogs),
 		FirstTxTimestamp: firstTxTimestamp,
@@ -152,19 +166,20 @@ func calculateTPS(txLogs []TxLog, outputFile string) error {
 		TPS:              tps,
 	}
 
+	// Write TPS data to the output file
 	file, err = os.Create(outputFile)
 	if err != nil {
-		return fmt.Errorf("failed to create TPS file: %v", err)
+		return fmt.Errorf("[ERROR] Failed to create TPS file: %v", err)
 	}
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(tpsData); err != nil {
-		return fmt.Errorf("failed to write TPS file: %v", err)
+		return fmt.Errorf("[ERROR] Failed to write TPS data to file: %v", err)
 	}
 
-	fmt.Printf("[INFO] TPS calculation completed. Results saved to %s\n", outputFile)
+	fmt.Printf("[INFO] TPS calculation completed successfully. Results saved to %s\n", outputFile)
 	return nil
 }
 
