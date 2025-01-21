@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -182,6 +183,11 @@ func main() {
 		return
 	}
 	defer logFile.Close()
+
+	// Sort log entries by TxIdx in ascending order
+	sort.Slice(logEntries, func(i, j int) bool {
+		return logEntries[i].TxIdx < logEntries[j].TxIdx
+	})
 
 	encoder := json.NewEncoder(logFile)
 	encoder.SetIndent("", "  ")
