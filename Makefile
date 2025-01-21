@@ -46,7 +46,7 @@ restart:
 
 calculate:
 	@echo "Calculating metrics..."
-	@go run metrics_calculator.go
+	@go run calc_metrics.go
 
 update-height:
 	@echo "Updating transaction heights in the log..."
