@@ -127,12 +127,13 @@ func calculateTPS(txLogs []TxLog, outputFile string) error {
 	var lastTxTimestamp int64
 	found := false
 
-	// Scan through the log file to find the matching height
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		// Look for the line containing the specific height
 		if strings.Contains(line, "height="+strconv.Itoa(lastTxHeight)) {
+			fmt.Printf("[DEBUG] Found line for lastTxHeight: %s\n", line)
+
 			words := strings.Fields(line)
 			if len(words) > 0 {
 				lastTxTimestamp, err = strconv.ParseInt(words[0], 10, 64)
@@ -140,6 +141,8 @@ func calculateTPS(txLogs []TxLog, outputFile string) error {
 					return fmt.Errorf("[ERROR] Failed to parse timestamp: %v", err)
 				}
 				found = true
+			} else {
+				fmt.Printf("[DEBUG] No words found in line: %s\n", line)
 			}
 			break
 		}
