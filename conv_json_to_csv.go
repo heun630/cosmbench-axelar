@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 )
 
 func convertJSONToCSV(jsonFile string, csvFile string) error {
@@ -16,8 +17,8 @@ func convertJSONToCSV(jsonFile string, csvFile string) error {
 	}
 	defer file.Close()
 
-	// Decode JSON into a generic slice of maps
-	var data []map[string]interface{}
+	// Decode JSON into a generic interface
+	var data interface{}
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&data); err != nil {
 		return fmt.Errorf("failed to decode JSON file: %v", err)
@@ -33,27 +34,72 @@ func convertJSONToCSV(jsonFile string, csvFile string) error {
 	writer := csv.NewWriter(csvFileHandle)
 	defer writer.Flush()
 
-	// Write the header row
-	if len(data) > 0 {
+	// Determine the type of JSON data
+	value := reflect.ValueOf(data)
+
+	if value.Kind() == reflect.Slice {
+		// Handle JSON arrays
+		dataArray, ok := data.([]interface{})
+		if !ok {
+			return fmt.Errorf("failed to cast JSON array")
+		}
+
+		if len(dataArray) == 0 {
+			fmt.Printf("[INFO] JSON file %s contains no data.\n", jsonFile)
+			return nil
+		}
+
+		// Extract headers from the first element
+		firstElement, ok := dataArray[0].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("failed to parse first element as object")
+		}
+
 		var headers []string
-		for key := range data[0] {
+		for key := range firstElement {
 			headers = append(headers, key)
 		}
 		if err := writer.Write(headers); err != nil {
 			return fmt.Errorf("failed to write headers to CSV file: %v", err)
 		}
 
-		// Write the data rows
-		for _, record := range data {
+		// Write data rows
+		for _, item := range dataArray {
+			record, ok := item.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("failed to parse item as object")
+			}
+
 			var row []string
 			for _, header := range headers {
-				value := record[header]
-				row = append(row, fmt.Sprintf("%v", value))
+				row = append(row, fmt.Sprintf("%v", record[header]))
 			}
 			if err := writer.Write(row); err != nil {
-				return fmt.Errorf("failed to write data row to CSV file: %v", err)
+				return fmt.Errorf("failed to write row to CSV file: %v", err)
 			}
 		}
+	} else if value.Kind() == reflect.Map {
+		// Handle JSON objects
+		dataMap, ok := data.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("failed to cast JSON object")
+		}
+
+		// Write headers (keys of the object)
+		var headers []string
+		var row []string
+		for key, val := range dataMap {
+			headers = append(headers, key)
+			row = append(row, fmt.Sprintf("%v", val))
+		}
+		if err := writer.Write(headers); err != nil {
+			return fmt.Errorf("failed to write headers to CSV file: %v", err)
+		}
+		if err := writer.Write(row); err != nil {
+			return fmt.Errorf("failed to write row to CSV file: %v", err)
+		}
+	} else {
+		return fmt.Errorf("unsupported JSON format")
 	}
 
 	fmt.Printf("[INFO] JSON data successfully converted to %s\n", csvFile)
