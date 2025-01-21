@@ -23,6 +23,13 @@ var (
 	numTxs       int
 )
 
+type SendLogEntry struct {
+	TxIdx     int    `json:"txIdx"`
+	Timestamp int64  `json:"timestamp"`
+	TxHash    string `json:"txHash"`
+	Height    int    `json:"height,omitempty"`
+}
+
 type TxData struct {
 	TxBytes string `json:"tx_bytes"`
 	Mode    string `json:"mode"`
@@ -46,7 +53,7 @@ func readEncodedTxs(dir string) ([]string, error) {
 	return txs, nil
 }
 
-func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logEntries *[]LogEntry) {
+func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.Mutex, logEntries *[]SendLogEntry) {
 	defer wg.Done()
 
 	host := HOSTS[txIdx%len(HOSTS)]
@@ -105,7 +112,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	*logEntries = append(*logEntries, LogEntry{
+	*logEntries = append(*logEntries, SendLogEntry{
 		TxIdx:     txIdx,
 		Timestamp: timestamp,
 		TxHash:    txHash,
@@ -147,7 +154,7 @@ func main() {
 
 	var fileMutex sync.Mutex
 	var wg sync.WaitGroup
-	var logEntries []LogEntry
+	var logEntries []SendLogEntry
 
 	sentTxs := 0
 
