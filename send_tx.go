@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	encodedTxDir = "/data/axelar/cosmbench-axelar/axelar-cosmbench_encoded_txs"
-	HOSTS        = []string{"127.0.0.1", "127.0.0.1", "127.0.0.1", "127.0.0.1"}
-	REST_PORTS   = []string{"22200", "22201", "22202", "22203"}
+	encodedTxDir = "injective-cosmbench_encoded_txs"
+	HOSTS        = []string{"147.46.240.248", "147.46.240.248", "147.46.240.248", "147.46.240.248"}
+	REST_PORTS   = []string{"32200", "32201", "32202", "32203"}
 	InputTPS     int
 	runTime      int
 	numTxs       int
@@ -110,7 +110,7 @@ func sendTransaction(txIdx int, tx string, wg *sync.WaitGroup, fileMutex *sync.M
 		TxHash:    txHash,
 	})
 
-	fmt.Printf("[TxIdx %d] Transaction sent successfully. TxHash: %s\n", txIdx, txHash)
+	// fmt.Printf("[TxIdx %d] Transaction sent successfully. TxHash: %s\n", txIdx, txHash)
 }
 
 func main() {

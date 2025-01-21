@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // TxLog represents a transaction log entry
@@ -106,7 +107,39 @@ func calculateTPS(txLogs []TxLog, outputFile string) error {
 	}
 
 	firstTxTimestamp := txLogs[0].Timestamp
-	lastTxTimestamp := txLogs[len(txLogs)-1].Timestamp
+	lastTxHeight := txLogs[len(txLogs)-1].Height
+	////
+	file, err := os.Open("logs/output0.log")
+	if err != nil {
+		fmt.Println("파일을 열 수 없습니다:", err)
+		return err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
+	words := []string{}
+	// 파일을 한 줄씩 읽기
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// height=1254가 포함된 라인 찾기
+		if strings.Contains(line, "height="+strconv.Itoa(lastTxHeight)) {
+			// 라인의 첫 단어 추출
+			words = strings.Fields(line)
+			if len(words) > 0 {
+				fmt.Println("첫 번째 단어:", words[0]) //words[0] = committed state timestamp
+			} else {
+				fmt.Println("빈 라인입니다.")
+			}
+			break
+		}
+	}
+	lastTxTimestamp, err := strconv.ParseInt(words[0], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	/////
 	totalElapsedTime := lastTxTimestamp - firstTxTimestamp
 	tps := float64(len(txLogs)) / (float64(totalElapsedTime) / 1000.0)
 
@@ -118,7 +151,7 @@ func calculateTPS(txLogs []TxLog, outputFile string) error {
 		TPS:              tps,
 	}
 
-	file, err := os.Create(outputFile)
+	file, err = os.Create(outputFile)
 	if err != nil {
 		return fmt.Errorf("failed to create TPS file: %v", err)
 	}
