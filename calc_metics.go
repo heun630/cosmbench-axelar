@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -182,6 +183,11 @@ func calculateBlockTransactionCounts(txLogs []TxLog, outputFile string) error {
 			TransactionCount: count,
 		})
 	}
+
+	// Sort results by height in ascending order
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Height < results[j].Height
+	})
 
 	file, err := os.Create(outputFile)
 	if err != nil {
